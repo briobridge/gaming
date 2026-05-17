@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GameCRM Pro</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c14;--bg2:#0d1220;--bg3:#111827;--bg4:#162030;
+  --accent:#00e5ff;--accent2:#a855f7;--accent3:#10b981;--warn:#f59e0b;--danger:#f43f5e;
+  --text:#e8edf5;--text2:#8899aa;--text3:#4a5568;
+  --border:#1e3050;--border2:#243a58;--border3:#2d4a6e;
+  --card:#0d1220;--inp:#080c14;
+  --font:'Sora',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px}
+#root{height:100%;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border3);border-radius:3px}
+.btn{border:none;cursor:pointer;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:.3px;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#000}.btn-primary:hover{opacity:.85}
+.btn-purple{background:var(--accent2);color:#fff}.btn-purple:hover{opacity:.85}
+.btn-success{background:var(--accent3);color:#000}.btn-success:hover{opacity:.85}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{opacity:.85}
+.btn-warn{background:var(--warn);color:#000}.btn-warn:hover{opacity:.85}
+.btn-ghost{background:transparent;border:1px solid var(--border3);color:var(--text2)}.btn-ghost:hover{background:var(--bg4);color:var(--text)}
+.btn-sm{padding:5px 12px;font-size:11px}.btn-xs{padding:3px 8px;font-size:11px;border-radius:6px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.bd-cyan{background:rgba(0,229,255,.1);color:var(--accent);border:1px solid rgba(0,229,255,.2)}
+.bd-purple{background:rgba(168,85,247,.1);color:var(--accent2);border:1px solid rgba(168,85,247,.2)}
+.bd-green{background:rgba(16,185,129,.1);color:var(--accent3);border:1px solid rgba(16,185,129,.2)}
+.bd-red{background:rgba(244,63,94,.1);color:var(--danger);border:1px solid rgba(244,63,94,.2)}
+.bd-warn{background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.2)}
+.bd-gray{background:rgba(100,120,150,.1);color:var(--text2);border:1px solid rgba(100,120,150,.2)}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50}
+.logo{font-size:16px;font-weight:800;color:var(--accent);letter-spacing:2px;font-family:var(--mono)}.logo em{color:var(--accent2);font-style:normal}
+.nav-btn{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;color:var(--text3);background:transparent;border:none;transition:all .15s;font-family:var(--font)}
+.nav-btn:hover{color:var(--text);background:var(--bg3)}.nav-btn.active{color:var(--accent);background:rgba(0,229,255,.08)}
+.clock-pill{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;font-family:var(--mono);color:var(--text2)}
+.clock-pill strong{color:var(--accent3)}
+.kpi-bar{display:grid;gap:12px;padding:16px 20px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.kpi-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+.kpi-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;font-weight:600}
+.kpi-value{font-size:20px;font-weight:700;font-family:var(--mono)}.kpi-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.tabs-row{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;flex-shrink:0;overflow-x:auto}
+.tab-item{padding:12px 16px;font-size:12px;font-weight:500;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.tab-item:hover{color:var(--text)}.tab-item.active{color:var(--accent);border-bottom-color:var(--accent)}
+.content-scroll{flex:1;overflow-y:auto;padding:20px}
+.content-inner{max-width:1300px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.fc{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.fc-head{background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:8px}
+.fc-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.fc-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)}
+.fg{padding:14px 16px;display:grid;gap:10px}
+.c2{grid-template-columns:repeat(2,1fr)}.c3{grid-template-columns:repeat(3,1fr)}.c4{grid-template-columns:repeat(4,1fr)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.field label .req{color:var(--danger);margin-left:2px}
+.field input,.field select,.field textarea{background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%;font-family:var(--font);transition:border .15s}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+.field input.ok{border-color:var(--accent3)!important}.field input.er{border-color:var(--danger)!important}
+.field select option{background:var(--bg2)}
+.hint{font-size:10px;margin-top:2px}.hint-ok{color:var(--accent3)}.hint-er{color:var(--danger)}
+.tog-row{display:flex;gap:6px}
+.tog{flex:1;padding:7px;border:1px solid var(--border2);border-radius:7px;background:var(--inp);color:var(--text2);cursor:pointer;font-size:12px;text-align:center;transition:all .15s}
+.tog.t-yes{border-color:var(--accent3);background:rgba(16,185,129,.1);color:var(--accent3)}
+.tog.t-no{border-color:var(--danger);background:rgba(244,63,94,.1);color:var(--danger)}
+.sub-bar{padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--bg3)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:400px}
+th{background:var(--bg3);padding:8px 12px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:700}
+td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.015)}
+.abtns{display:flex;gap:4px}
+.ibtn{background:transparent;border:1px solid var(--border2);border-radius:6px;padding:3px 8px;display:inline-flex;align-items:center;cursor:pointer;color:var(--text3);font-size:11px;transition:all .15s;white-space:nowrap}
+.ibtn:hover{background:var(--bg3);color:var(--text)}.ibtn.del:hover{border-color:var(--danger);color:var(--danger)}
+.ibtn.rl:hover{border-color:var(--accent3);color:var(--accent3)}
+.ibtn.wb:hover{border-color:var(--warn);color:var(--warn)}
+.empty-row{padding:32px;text-align:center;color:var(--text3);font-size:12px}
+.moverlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;z-index:200;backdrop-filter:blur(4px)}
+.modal{background:var(--bg2);border:1px solid var(--border3);border-radius:14px;width:720px;max-width:100%;overflow:hidden;max-height:90vh;display:flex;flex-direction:column}
+.modal-sm{width:480px}
+.mhead{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.mtitle{font-size:15px;font-weight:700}.msub{font-size:11px;color:var(--text3);margin-top:2px}
+.mclose{background:transparent;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:4px}
+.mbody{overflow-y:auto;flex:1}.mfooter{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--bg3);flex-shrink:0}
+.gbal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:16px}
+.gbal-card{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:14px}
+.gbal-name{font-size:13px;font-weight:700;margin-bottom:10px}
+.gbal-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.gbal-current{font-size:22px;font-weight:700;margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+.admin-layout{display:flex;flex:1;overflow:hidden}
+.admin-sidebar{width:200px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0}
+.asb-sec{padding:12px 14px 4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)}
+.asb-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:12px;cursor:pointer;color:var(--text3);border-left:2px solid transparent;transition:all .15s}
+.asb-item:hover{color:var(--text);background:var(--bg3)}.asb-item.active{color:var(--accent);background:rgba(0,229,255,.06);border-left-color:var(--accent)}
+.admin-main{flex:1;overflow-y:auto;padding:20px}
+.akpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:20px}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 16px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.filter-bar input,.filter-bar select{background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:5px 10px;color:var(--text);font-size:12px;font-family:var(--font)}
+.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--accent)}
+.exp-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:11px;background:var(--bg4);border:1px solid var(--border2);color:var(--text2)}
+.info-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:12px}
+.ib-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ib-item .ibl{font-size:10px;color:var(--text3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.3px}
+.ib-item .ibv{font-weight:600;font-size:13px}
+.desc-note{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:11px;color:var(--text2);line-height:1.6}
+.closed-screen{display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:20px;padding:40px}
+.shift-report{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;width:100%;max-width:500px}
+.sr-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.sr-row:last-child{border-bottom:none;font-weight:700}
+.perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.perm-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;user-select:none}
+.perm-item.on{border-color:var(--accent3);background:rgba(16,185,129,.07)}
+.perm-cb{width:14px;height:14px;border-radius:3px;border:1px solid var(--border3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px}
+.perm-item.on .perm-cb{background:var(--accent3);border-color:var(--accent3);color:#000}
+@media(max-width:900px){.c3,.c4{grid-template-columns:repeat(2,1fr)}.admin-sidebar{width:160px}}
+@media(max-width:600px){.c2,.c3,.c4{grid-template-columns:1fr}.admin-sidebar{width:130px}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function today(){var d=new Date();return String(d.getDate()).padStart(2,'0')+'-'+MONTHS[d.getMonth()]+'-'+d.getFullYear();}
+function fmtTime(d){return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function fmtHM(d){return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function isUrl(u){try{new URL(u);return true;}catch(e){return false;}}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function getShift(){var h=new Date().getHours();return h>=6&&h<14?'Morning':h>=14&&h<22?'Afternoon':'Night';}
+function fmt$(n){return '$'+parseFloat(n||0).toFixed(2);}
+function dl(content,mime,filename){var b=new Blob([content],{type:mime});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;a.click();}
+
+var PERM_LIST=[
+  {id:'view_entries',label:'View Entries'},{id:'add_paid',label:'Add Paid Recharge'},
+  {id:'add_freeplay',label:'Add Freeplay'},{id:'add_redeem',label:'Add Redeem'},
+  {id:'edit_entries',label:'Edit Entries'},{id:'delete_entries',label:'Delete Entries'},
+  {id:'view_dashboard',label:'View Dashboard'},{id:'view_games',label:'View Games'},
+  {id:'view_vendors',label:'View Vendors'},{id:'view_expenses',label:'View Expenses'},
+  {id:'add_expenses',label:'Add Expenses'},{id:'export_data',label:'Export / Backup'},
+  {id:'manage_agents',label:'Manage Agents'},{id:'manage_settings',label:'Manage Settings'},
+  {id:'close_shift',label:'Close Shift'},
+];
+var ROLE_DEF={
+  owner:PERM_LIST.map(function(p){return p.id;}),
+  admin:PERM_LIST.map(function(p){return p.id;}),
+  manager:['view_entries','add_paid','add_freeplay','add_redeem','edit_entries','view_dashboard','view_games','view_vendors','view_expenses','add_expenses','export_data','close_shift'],
+  supervisor:['view_entries','add_paid','add_freeplay','add_redeem','view_dashboard','view_games','view_expenses','close_shift'],
+  agent:['view_entries','add_paid','add_freeplay','add_redeem'],
+};
+
+var STORE='gcrmv5';
+function loadDB(){try{var s=localStorage.getItem(STORE);if(s)return JSON.parse(s);}catch(e){}return null;}
+function saveDB(){try{localStorage.setItem(STORE,JSON.stringify(DB));}catch(e){}}
+
+var DEF={
+  shifts:[{id:'s1',name:'Morning',start:'06:00',end:'14:00'},{id:'s2',name:'Afternoon',start:'14:00',end:'22:00'},{id:'s3',name:'Night',start:'22:00',end:'06:00'}],
+  agents:[{id:'a1',name:'Ali Hassan',role:'Agent'},{id:'a2',name:'Sara Ahmed',role:'Agent'},{id:'a3',name:'Usman Malik',role:'Senior Agent'}],
+  staff:[],
+  payMethods:[
+    {id:'pm1',name:'Cash App',tags:[{id:'t1',tag:'$CashTag1'}]},
+    {id:'pm2',name:'Zelle',tags:[{id:'t2',tag:'zelle@shop.com'}]},
+    {id:'pm3',name:'Venmo',tags:[{id:'t3',tag:'@VenmoHandle'}]},
+  ],
+  pageNames:[{id:'pn1',name:'Main Page'},{id:'pn2',name:'VIP Page'}],
+  games:[
+    {id:'g1',name:'Fish Table',backendLoaded:5000,pricePer1k:10,backendLink:'',playerLink:'',username:'',password:'',vendorId:'',reloadHistory:[]},
+    {id:'g2',name:'Juwa',backendLoaded:8000,pricePer1k:10,backendLink:'',playerLink:'',username:'',password:'',vendorId:'',reloadHistory:[]},
+    {id:'g3',name:'Orion Stars',backendLoaded:6000,pricePer1k:10,backendLink:'',playerLink:'',username:'',password:'',vendorId:'',reloadHistory:[]},
+  ],
+  vendors:[{id:'v1',name:'FastPay Co',payMethodId:'',gatewayFee:2.5,payTag:'$FastPay',notes:''}],
+  expCats:[{id:'ec1',name:'Payroll'},{id:'ec2',name:'Rent'},{id:'ec3',name:'Utilities'},{id:'ec4',name:'Marketing'},{id:'ec5',name:'Misc'}],
+  expenses:[],entries:[],closedShifts:[],attendance:[],
+  shiftStart:new Date().toISOString(),
+  supabase:{url:'',anonKey:'',enabled:false},
+};
+
+var DB=loadDB()||JSON.parse(JSON.stringify(DEF));
+if(!DB.staff)DB.staff=[];
+if(!DB.closedShifts)DB.closedShifts=[];
+if(!DB.attendance)DB.attendance=[];
+if(!DB.supabase)DB.supabase={url:'',anonKey:'',enabled:false};
+if(!DB.expenses)DB.expenses=[];
+if(!DB.expCats)DB.expCats=DEF.expCats;
+DB.games.forEach(function(g){if(!g.vendorId)g.vendorId='';if(!g.reloadHistory)g.reloadHistory=[];});
+DB.vendors.forEach(function(v){if(v.commission!==undefined&&v.gatewayFee===undefined){v.gatewayFee=v.commission;delete v.commission;}if(v.gatewayFee===undefined)v.gatewayFee=0;});
+
+function gameBal(gid){
+  var g=DB.games.find(function(x){return x.id===gid;});if(!g)return 0;
+  var start=parseFloat(g.backendLoaded||0);
+  var used=DB.entries.filter(function(e){return e.type==='paid'&&e.gameId===gid;}).reduce(function(s,e){return s+parseFloat(e.recharge||0);},0);
+  var back=DB.entries.filter(function(e){return e.type==='redeem'&&e.gameId===gid;}).reduce(function(s,e){return s+parseFloat(e.rdCredits||0);},0);
+  return start-used+back;
+}
+function tagsFor(mid){var m=DB.payMethods.find(function(x){return x.id===mid;});return m?m.tags:[];}
+function agentNames(){return DB.agents.map(function(a){return a.name;});}
+function shiftNames(){return DB.shifts.map(function(s){return s.name;});}
+function gameNames(){return DB.games.map(function(g){return g.name;});}
+function pageNames(){return DB.pageNames.map(function(p){return p.name;});}
+function shiftKPIs(){
+  var e=DB.entries;
+  var paid=e.filter(function(x){return x.type==='paid';});
+  var fp=e.filter(function(x){return x.type==='freeplay';});
+  var rd=e.filter(function(x){return x.type==='redeem';});
+  return{paidCount:paid.length,fpCount:fp.length,rdCount:rd.length,
+    totalR:paid.reduce(function(s,x){return s+parseFloat(x.recharge||0);},0),
+    totalFP:fp.reduce(function(s,x){return s+parseFloat(x.fpAmount||0);},0),
+    totalCashout:rd.reduce(function(s,x){return s+parseFloat(x.cashoutPaid||0);},0),
+    newPlayers:e.filter(function(x){return x.isNewPlayer;}).length,
+    totalDeposit:paid.reduce(function(s,x){return s+parseFloat(x.deposit||0);},0),
+  };
+}
+
+var S={
+  page:'shift',shiftTab:'paid',eFilter:'all',
+  adminSection:'dashboard',modal:null,editGameId:null,
+  txSearch:'',txType:'all',txAgent:'',txGame:'',txShift:'',txDate:'',txSort:'date_desc',
+  afAgent:'',afDate:'',afStatus:'',
+  pf:newPF(),ff:newFF(),rf:newRF(),
+};
+function newPF(){return{date:today(),shift:getShift(),agent:'',playerName:'',playerUrl:'',deposit:'',recharge:'',promo:'',promoP:'',payMethodId:'',payTagId:'',custTag:'',gameId:'',gameName:'',depositOnPage:'',pageName:'',huntingProfile:'',salesName:'',legalName:'',contact:'',email:''};}
+function newFF(){return{date:today(),shift:getShift(),agent:'',playerName:'',playerUrl:'',fpAmount:'',gameId:'',gameName:'',salesName:'',legalName:'',contact:'',email:''};}
+function newRF(){return{date:today(),shift:getShift(),agent:'',gameId:'',gameName:'',rdCredits:'',cashoutPaid:''};}
+
+function render(){
+  var root=document.getElementById('root');
+  var as=document.querySelector('.admin-main');var asc=as?as.scrollTop:0;
+  root.innerHTML=buildApp();
+  bindAll();
+  if(window._clk)clearInterval(window._clk);
+  window._clk=setInterval(function(){var el=document.getElementById('clk');if(el)el.textContent=fmtTime(new Date());},1000);
+  var as2=document.querySelector('.admin-main');if(as2&&asc)as2.scrollTop=asc;
+}
+
+function buildApp(){
+  if(S.page==='closed')return buildClosed();
+  return '<div style="display:flex;flex-direction:column;height:100vh;overflow:hidden">'+buildTopbar()+(S.page==='shift'?buildShift():buildAdmin())+(S.modal?buildModal():'')+'</div>';
+}
+
+function buildTopbar(){
+  return '<div class="topbar">'+
+    '<div class="logo">GAME<em>CRM</em></div>'+
+    '<div style="display:flex;gap:4px">'+
+      '<button class="nav-btn'+(S.page==='shift'?' active':'')+'" data-nav="shift">Agent Panel</button>'+
+      '<button class="nav-btn'+(S.page==='admin'?' active':'')+'" data-nav="admin">Admin Dashboard</button>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
+      '<div class="clock-pill"><strong>'+getShift()+'</strong>&nbsp;<span id="clk">'+fmtTime(new Date())+'</span></div>'+
+      (S.page==='shift'?'<button class="btn btn-danger btn-sm" id="btn-close-shift">&#x2297; Close Shift</button>':'')+
+    '</div>'+
+  '</div>';
+}
+
+/* ───── SHIFT APP ───── */
+function buildShift(){
+  var k=shiftKPIs();
+  var body='';
+  if(S.shiftTab==='paid')body=buildPaidForm()+buildEntriesTable();
+  else if(S.shiftTab==='fp')body=buildFpForm()+buildEntriesTable();
+  else if(S.shiftTab==='rd')body=buildRdForm()+buildEntriesTable();
+  else if(S.shiftTab==='bal')body=buildBalView();
+  else if(S.shiftTab==='att')body=buildAgentAtt();
+  var tabs=[['paid','Paid Recharge'],['fp','Freeplay'],['rd','Redeem/Cashout'],['bal','Game Balance'],['att','Attendance']];
+  return '<div style="display:flex;flex-direction:column;flex:1;overflow:hidden">'+
+    '<div class="kpi-bar" style="grid-template-columns:repeat(5,1fr)">'+
+      kCard('Paid Recharges',k.paidCount,fmt$(k.totalR)+' total','var(--accent)')+
+      kCard('Freeplay',k.fpCount,fmt$(k.totalFP)+' given','var(--accent2)')+
+      kCard('Cashouts',k.rdCount,fmt$(k.totalCashout)+' paid','var(--danger)')+
+      kCard('Total Deposit',fmt$(k.totalDeposit),'cash in','var(--accent3)')+
+      kCard('New Players',k.newPlayers,'this shift','var(--warn)')+
+    '</div>'+
+    '<div class="tabs-row">'+tabs.map(function(t){return '<div class="tab-item'+(S.shiftTab===t[0]?' active':'')+'" data-stab="'+t[0]+'">'+t[1]+'</div>';}).join('')+'</div>'+
+    '<div class="content-scroll"><div class="content-inner">'+body+'</div></div>'+
+  '</div>';
+}
+function kCard(l,v,s,c){return '<div class="kpi-card"><div class="kpi-label">'+l+'</div><div class="kpi-value" style="color:'+c+'">'+v+'</div><div class="kpi-sub">'+s+'</div></div>';}
+
+/* ───── FORM HELPERS ───── */
+function fld(label,req,html,hint){
+  var r=req?'<span class="req">*</span>':'';
+  var h=hint?('<div class="hint '+(hint.charAt(0)==='✓'?'hint-ok':'hint-er')+'">'+hint+'</div>'):'';
+  return '<div class="field"><label>'+esc(label)+r+'</label>'+html+h+'</div>';
+}
+function inp(id,val,ph,type,cls){
+  type=type||'text';
+  return '<input type="'+type+'" id="'+id+'" value="'+esc(val)+'" placeholder="'+esc(ph)+'"'+(cls?' class="'+cls+'"':'')+' autocomplete="off">';
+}
+function numinp(id,val,ph){return '<input type="number" id="'+id+'" value="'+esc(val)+'" placeholder="'+esc(ph)+'" step="0.01" min="0" autocomplete="off">';}
+function sel(id,val,opts,ph){
+  ph=ph||'-- Select --';
+  var o='<option value="">'+esc(ph)+'</option>';
+  opts.forEach(function(x){var v=typeof x==='string'?x:x.value;var l=typeof x==='string'?x:x.label;o+='<option value="'+esc(v)+'"'+(v===val?' selected':'')+'>'+esc(l)+'</option>';});
+  return '<select id="'+id+'">'+o+'</select>';
+}
+function gOpts(arr){return arr.map(function(n){return{value:n,label:n};});}
+function fcHead(title,color){return '<div class="fc-head"><div class="fc-dot" style="background:'+color+'"></div><div class="fc-title">'+esc(title)+'</div></div>';}
+function inpStyle(w){return 'style="background:var(--inp);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text);font-size:12px;width:'+w+'" autocomplete="off"';}
+function roInputSt(){return 'style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%;opacity:.55;font-family:var(--font)"';}
+
+/* ───── PAID FORM ───── */
+function buildPaidForm(){
+  var f=S.pf;
+  var urlOk=f.playerUrl&&isUrl(f.playerUrl);
+  var urlErr=f.playerUrl&&!urlOk;
+  var tagOpts=f.payMethodId?tagsFor(f.payMethodId).map(function(t){return{value:t.id,label:t.tag};}):[];
+  var pmOpts=DB.payMethods.map(function(m){return{value:m.id,label:m.name};});
+  var pageDisabled=f.depositOnPage!=='Yes';
+  var huntDisabled=f.depositOnPage==='Yes';
+  return '<div class="fc">'+
+    fcHead('Session Info','var(--accent)')+
+    '<div class="fg c3">'+fld('Date',true,inp('pf-date',f.date,''))+fld('Shift',true,sel('pf-shift',f.shift,gOpts(shiftNames())))+fld('Agent',true,sel('pf-agent',f.agent,gOpts(agentNames())))+'</div>'+
+    fcHead('Player Info','var(--accent2)')+
+    '<div class="fg c2">'+fld('Player Name',true,inp('pf-pname',f.playerName,'Display name'))+fld('Facebook URL',true,inp('pf-purl',f.playerUrl,'https://facebook.com/...','url',urlOk?'ok':urlErr?'er':undefined),urlOk?'✓ Valid URL':urlErr?'Invalid URL':'')+'</div>'+
+    fcHead('Transaction','var(--accent3)')+
+    '<div class="fg c4">'+
+      fld('Deposit ($)',true,numinp('pf-dep',f.deposit,'0.00'))+
+      fld('Recharge ($)',true,numinp('pf-rec',f.recharge,'0.00'))+
+      fld('Promo ($)',false,'<input type="number" id="pf-promo" value="'+esc(f.promo)+'" placeholder="Auto" readonly '+roInputSt()+'>')+
+      fld('Promo %',false,'<input type="text" id="pf-promoP" value="'+esc(f.promoP)+'" placeholder="Auto" readonly '+roInputSt()+'>')+
+    '</div>'+
+    fcHead('Payment','var(--warn)')+
+    '<div class="fg c3">'+
+      fld('Payment Method',true,sel('pf-pm',f.payMethodId,pmOpts))+
+      fld('Payment Tag',true,f.payMethodId?sel('pf-ptag',f.payTagId,tagOpts,'-- Select Tag --'):'<select disabled><option>Select method first</option></select>')+
+      fld('Customer Tag / Email',true,inp('pf-ctag',f.custTag,'@tag or email'))+
+    '</div>'+
+    fcHead('Game Info','var(--accent2)')+
+    '<div class="fg c2">'+fld('Game ID',true,inp('pf-gid',f.gameId,'Unique player game ID'))+fld('Game Name',true,sel('pf-gname',f.gameName,gOpts(gameNames())))+'</div>'+
+    fcHead('Deposit Channel','var(--accent3)')+
+    '<div class="fg c3">'+
+      '<div class="field"><label>Deposit on Page?<span class="req">*</span></label>'+
+        '<div class="tog-row">'+
+          '<div class="tog'+(f.depositOnPage==='Yes'?' t-yes':'')+'" id="dp-yes">Yes</div>'+
+          '<div class="tog'+(f.depositOnPage==='No'?' t-no':'')+'" id="dp-no">No</div>'+
+        '</div>'+
+      '</div>'+
+      fld('Page Name',f.depositOnPage==='Yes',pageDisabled?'<select disabled><option>N/A</option></select>':sel('pf-page',f.pageName,gOpts(pageNames())))+
+      fld('Hunting Profile',f.depositOnPage==='No','<input type="text" id="pf-hunt" value="'+esc(f.huntingProfile)+'" placeholder="Profile name"'+(huntDisabled?' disabled style="opacity:.4"':'')+' autocomplete="off">')+
+    '</div>'+
+    fcHead('New Player Info (optional — marks as new if filled)','var(--danger)')+
+    '<div class="fg c4">'+fld('Sales Agent',false,sel('pf-sname',f.salesName,gOpts(agentNames()),'-- Select --'))+fld('Legal Name',false,inp('pf-lname',f.legalName,'Full legal name'))+fld('Contact #',false,inp('pf-contact',f.contact,'+1 555 000 0000','tel'))+fld('E-mail',false,inp('pf-email',f.email,'player@email.com','email'))+'</div>'+
+    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="pf-clear">Clear</button><button class="btn btn-primary btn-sm" id="pf-submit">+ Add Paid Recharge</button></div>'+
+  '</div>';
+}
+
+/* ───── FREEPLAY FORM ───── */
+function buildFpForm(){
+  var f=S.ff;
+  var urlOk=f.playerUrl&&isUrl(f.playerUrl);var urlErr=f.playerUrl&&!urlOk;
+  return '<div class="fc">'+
+    fcHead('Session Info','var(--accent)')+
+    '<div class="fg c3">'+fld('Date',true,inp('ff-date',f.date,''))+fld('Shift',true,sel('ff-shift',f.shift,gOpts(shiftNames())))+fld('Agent',true,sel('ff-agent',f.agent,gOpts(agentNames())))+'</div>'+
+    fcHead('Player Info','var(--accent2)')+
+    '<div class="fg c2">'+fld('Player Name',true,inp('ff-pname',f.playerName,'Display name'))+fld('Facebook URL',false,inp('ff-purl',f.playerUrl,'https://facebook.com/...','url',urlOk?'ok':urlErr?'er':undefined),urlOk?'✓ Valid URL':urlErr?'Invalid URL':'')+'</div>'+
+    fcHead('Freeplay Credits','var(--accent3)')+
+    '<div class="fg c2">'+fld('Freeplay Amount ($)',true,numinp('ff-amt',f.fpAmount,'0.00'))+fld('Game Name',true,sel('ff-gname',f.gameName,gOpts(gameNames())))+'</div>'+
+    fcHead('Game Info','var(--accent2)')+
+    '<div class="fg c2">'+fld('Game ID',true,inp('ff-gid',f.gameId,'Player game ID'))+fld('Game ID/Name',false,'<input type="text" value="'+esc(f.gameName)+'" readonly '+roInputSt()+'>')+'</div>'+
+    fcHead('New Player Info (optional)','var(--danger)')+
+    '<div class="fg c4">'+fld('Sales Agent',false,sel('ff-sname',f.salesName,gOpts(agentNames()),'-- Select --'))+fld('Legal Name',false,inp('ff-lname',f.legalName,'Full name'))+fld('Contact',false,inp('ff-contact',f.contact,'+1','tel'))+fld('Email',false,inp('ff-email',f.email,'email','email'))+'</div>'+
+    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="ff-clear">Clear</button><button class="btn btn-primary btn-sm" id="ff-submit">+ Add Freeplay</button></div>'+
+  '</div>';
+}
+
+/* ───── REDEEM FORM ───── */
+function buildRdForm(){
+  var f=S.rf;
+  var match=f.gameId.length>=2?DB.entries.find(function(e){return e.type==='paid'&&e.gameId===f.gameId;}):null;
+  var matchHtml=match?
+    '<div style="padding:0 16px 12px"><div class="info-box"><div class="ib-row">'+
+      '<div class="ib-item"><div class="ibl">Player</div><div class="ibv">'+esc(match.playerName)+'</div></div>'+
+      '<div class="ib-item"><div class="ibl">Game</div><div class="ibv">'+esc(match.gameName)+'</div></div>'+
+      '<div class="ib-item"><div class="ibl">Last Recharge</div><div class="ibv" style="color:var(--accent3)">'+fmt$(match.recharge)+'</div></div>'+
+      '<div class="ib-item"><div class="ibl">Legal Name</div><div class="ibv">'+esc(match.legalName||'—')+'</div></div>'+
+      '<div class="ib-item"><div class="ibl">Contact</div><div class="ibv">'+esc(match.contact||'—')+'</div></div>'+
+      '<div class="ib-item"><div class="ibl">Agent</div><div class="ibv">'+esc(match.agent||'—')+'</div></div>'+
+    '</div></div></div>':
+    '<div style="padding:0 16px 10px;font-size:11px;color:var(--text3)">Enter player Game ID to auto-fill details.</div>';
+  return '<div class="fc">'+
+    fcHead('Redeem / Cashout','var(--danger)')+
+    '<div class="fg c3">'+fld('Date',true,inp('rf-date',f.date,''))+fld('Shift',true,sel('rf-shift',f.shift,gOpts(shiftNames())))+fld('Agent',true,sel('rf-agent',f.agent,gOpts(agentNames())))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Game ID',true,inp('rf-gid',f.gameId,'Enter full player game ID'))+fld('Game Name',true,sel('rf-gname',f.gameName,gOpts(gameNames()),'-- Select --'))+'</div>'+
+    matchHtml+
+    '<div class="fg c2" style="padding-top:0">'+fld('Redeem Credits',true,numinp('rf-cred',f.rdCredits,'Credits removed from game'))+fld('Cashout Paid ($)',true,numinp('rf-cash',f.cashoutPaid,'Winnings paid'))+'</div>'+
+    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="rf-clear">Clear</button><button class="btn btn-danger btn-sm" id="rf-submit">+ Add Redeem</button></div>'+
+  '</div>';
+}
+
+/* ───── GAME BALANCE ───── */
+function buildBalView(){
+  if(!DB.games.length)return '<div class="fc"><div class="empty-row">No games configured.</div></div>';
+  var cards=DB.games.map(function(g){
+    var start=parseFloat(g.backendLoaded||0);
+    var used=DB.entries.filter(function(e){return e.type==='paid'&&e.gameName===g.name;}).reduce(function(s,e){return s+parseFloat(e.recharge||0);},0);
+    var cur=gameBal(g.id);
+    return '<div class="gbal-card">'+
+      '<div class="gbal-name">'+esc(g.name)+'</div>'+
+      '<div class="gbal-row"><span>Starting</span><span>'+fmt$(start)+'</span></div>'+
+      '<div class="gbal-row"><span>Recharged</span><span style="color:var(--danger)">-'+fmt$(used)+'</span></div>'+
+      '<div class="gbal-current" style="color:'+(cur<0?'var(--danger)':'var(--accent3)')+'">'+fmt$(cur)+'</div>'+
+    '</div>';
+  }).join('');
+  return '<div class="fc">'+fcHead('Live Game Balances','var(--accent3)')+'<div class="gbal-grid">'+cards+'</div></div>';
+}
+
+/* ───── ENTRIES TABLE ───── */
+function buildEntriesTable(){
+  var list=DB.entries.slice();
+  if(S.eFilter==='paid')list=list.filter(function(e){return e.type==='paid';});
+  else if(S.eFilter==='freeplay')list=list.filter(function(e){return e.type==='freeplay';});
+  else if(S.eFilter==='redeem')list=list.filter(function(e){return e.type==='redeem';});
+  var fBtns=['all','paid','freeplay','redeem'].map(function(f){return '<button class="btn btn-xs'+(S.eFilter===f?' btn-primary':' btn-ghost')+'" data-ef="'+f+'">'+f.charAt(0).toUpperCase()+f.slice(1)+'</button>';}).join('');
+  var rows=!list.length?'<tr><td colspan="10" class="empty-row">No entries yet.</td></tr>':
+    list.map(function(e,i){
+      var tb='<span class="badge '+(e.type==='paid'?'bd-cyan':e.type==='freeplay'?'bd-purple':'bd-red')+'">'+(e.type==='paid'?'Paid':e.type==='freeplay'?'Free':'Redeem')+'</span>';
+      var nb=e.isNewPlayer?'<span class="badge bd-green" style="margin-left:4px">New</span>':'';
+      var dep=e.deposit?fmt$(e.deposit):'—';
+      var amt=e.recharge?fmt$(e.recharge):e.fpAmount?('<span style="color:var(--accent2)">'+fmt$(e.fpAmount)+'</span>'):e.rdCredits?('<span style="color:var(--danger)">-'+fmt$(e.rdCredits)+'</span>'):'—';
+      return '<tr>'+
+        '<td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
+        '<td>'+tb+nb+'</td>'+
+        '<td style="font-size:11px">'+esc(e.date||'—')+'</td>'+
+        '<td>'+esc(e.agent||'—')+'</td>'+
+        '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.playerName||'—')+'</td>'+
+        '<td style="font-family:var(--mono);font-size:11px">'+esc(e.gameId||'—')+'</td>'+
+        '<td>'+esc(e.gameName||'—')+'</td>'+
+        '<td style="color:var(--accent3)">'+dep+'</td>'+
+        '<td>'+amt+'</td>'+
+        '<td><div class="abtns"><button class="ibtn" data-edit-entry="'+e.id+'">Edit</button><button class="ibtn del" data-del-entry="'+e.id+'">Del</button></div></td>'+
+      '</tr>';
+    }).join('');
+  return '<div class="fc">'+
+    '<div class="fc-head" style="justify-content:space-between;padding-right:8px"><div style="display:flex;align-items:center;gap:8px"><div class="fc-dot"></div><div class="fc-title">Shift Entries ('+list.length+')</div></div><div style="display:flex;gap:4px">'+fBtns+'</div></div>'+
+    '<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Date</th><th>Agent</th><th>Player</th><th>Game ID</th><th>Game</th><th>Deposit</th><th>Amount</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+  '</div>';
+}
+
+/* ───── AGENT ATTENDANCE ───── */
+function buildAgentAtt(){
+  var td=today();
+  var people=allPeople();
+  var cards=people.length===0?'<div class="empty-row">No agents configured.</div>':
+    people.map(function(a){
+      var rec=DB.attendance.find(function(r){return r.agentId===a.id&&r.date===td;});
+      var isIn=rec&&rec.checkIn&&!rec.checkOut&&rec.status!=='leave';
+      var isOut=rec&&rec.checkOut;
+      var isLeave=rec&&rec.status==='leave';
+      var dur='';
+      if(isIn&&rec.checkInAt){var m=Math.floor((Date.now()-new Date(rec.checkInAt).getTime())/60000);dur=Math.floor(m/60)+'h '+m%60+'m on shift';}
+      else if(isOut&&rec.duration){dur=Math.floor(rec.duration/60)+'h '+rec.duration%60+'m worked';}
+      var bc=isIn?'var(--accent3)':isLeave?'var(--warn)':isOut?'var(--border3)':'var(--border)';
+      var icon=isIn?'🟢':isLeave?'🟡':isOut?'⚫':'⚪';
+      var btns='';
+      if(!rec||(!rec.checkIn&&!isLeave))btns='<button class="btn btn-success btn-xs" data-checkin="'+a.id+'">✓ Check In</button> <button class="btn btn-warn btn-xs" data-leave="'+a.id+'">Leave</button>';
+      else if(isIn)btns='<button class="btn btn-danger btn-xs" data-checkout="'+a.id+'">Check Out</button>';
+      else if(isOut)btns='<span class="badge bd-gray">Done today</span>';
+      else if(isLeave)btns='<span class="badge bd-warn">On Leave</span>';
+      var ti=rec&&rec.checkIn?'In: '+rec.checkIn+(rec.checkOut?' · Out: '+rec.checkOut:''):'';
+      var li=isLeave?('<div style="font-size:11px;color:var(--warn)">Leave: '+esc(rec.leaveReason||'')+'</div>'):'';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg3);border:1px solid '+bc+';border-radius:10px;margin-bottom:8px">'+
+        '<div style="display:flex;align-items:center;gap:12px">'+
+          '<div style="font-size:20px">'+icon+'</div>'+
+          '<div>'+
+            '<div style="font-weight:600">'+esc(a.name)+'</div>'+
+            '<div style="font-size:11px;color:var(--text3)">'+esc(a.role||'Agent')+(dur?' · <span style="color:'+(isIn?'var(--accent3)':'var(--text2)')+'">'+dur+'</span>':'')+'</div>'+
+            (ti?'<div style="font-size:10px;color:var(--text3)">'+ti+'</div>':'')+li+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px">'+btns+'</div>'+
+      '</div>';
+    }).join('');
+  var tr=DB.attendance.filter(function(r){return r.date===td;});
+  var cIn=tr.filter(function(r){return r.checkIn&&!r.checkOut&&r.status!=='leave';}).length;
+  var cOut=tr.filter(function(r){return r.checkOut;}).length;
+  var cLv=tr.filter(function(r){return r.status==='leave';}).length;
+  var cAb=Math.max(0,people.length-cIn-cOut-cLv);
+  return '<div class="fc">'+fcHead('Attendance — '+td,'var(--accent3)')+'<div style="padding:14px 16px">'+cards+'</div></div>'+
+    '<div class="fc">'+fcHead("Today's Summary",'var(--accent2)')+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:14px 16px">'+
+      kCard('Currently In',cIn,'checked in','var(--accent3)')+kCard('Checked Out',cOut,'completed','var(--text2)')+kCard('On Leave',cLv,'approved','var(--warn)')+kCard('Not Arrived',cAb,'absent','var(--danger)')+
+    '</div></div>';
+}
+function allPeople(){
+  var p=DB.agents.slice();
+  DB.staff.forEach(function(m){if(!p.find(function(a){return a.name===m.name;}))p.push(m);});
+  return p;
+}
+
+/* ───── ADMIN APP ───── */
+function buildAdmin(){
+  var sections=[
+    {id:'dashboard',icon:'📊',label:'Dashboard'},
+    {id:'transactions',icon:'📋',label:'Transactions'},
+    {id:'attendance',icon:'🗓',label:'Attendance'},
+    {id:'shifts',icon:'↔',label:'Shifts'},
+    {id:'agents',icon:'👥',label:'Agents'},
+    {id:'staff',icon:'🔑',label:'Staff & Access'},
+    {id:'games',icon:'🎮',label:'Games'},
+    {id:'paymethods',icon:'💳',label:'Pay Methods'},
+    {id:'pages',icon:'📄',label:'Page Names'},
+    {id:'vendors',icon:'🏪',label:'Vendors'},
+    {id:'expenses',icon:'💸',label:'Expenses'},
+    {id:'supabase',icon:'🗄',label:'Supabase'},
+    {id:'backup',icon:'💾',label:'Backup & Export'},
+  ];
+  var sb=sections.map(function(s){return '<div class="asb-item'+(S.adminSection===s.id?' active':'')+'" data-asec="'+s.id+'"><span style="font-size:14px">'+s.icon+'</span>'+s.label+'</div>';}).join('');
+  var content='';
+  switch(S.adminSection){
+    case 'dashboard':content=buildDash();break;
+    case 'transactions':content=buildTx();break;
+    case 'attendance':content=buildAdminAtt();break;
+    case 'shifts':content=buildAShifts();break;
+    case 'agents':content=buildAAgents();break;
+    case 'staff':content=buildAStaff();break;
+    case 'games':content=buildAGames();break;
+    case 'paymethods':content=buildAPM();break;
+    case 'pages':content=buildAPages();break;
+    case 'vendors':content=buildAVendors();break;
+    case 'expenses':content=buildAExp();break;
+    case 'supabase':content=buildSupabase();break;
+    case 'backup':content=buildBackup();break;
+  }
+  return '<div class="admin-layout"><div class="admin-sidebar"><div class="asb-sec">Menu</div>'+sb+'</div><div class="admin-main">'+content+'</div></div>';
+}
+
+/* ───── DASHBOARD ───── */
+function buildDash(){
+  var allE=DB.entries.slice();
+  DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(e);});});
+  var paid=allE.filter(function(x){return x.type==='paid';});
+  var fp=allE.filter(function(x){return x.type==='freeplay';});
+  var rd=allE.filter(function(x){return x.type==='redeem';});
+  var tDep=paid.reduce(function(s,x){return s+parseFloat(x.deposit||0);},0);
+  var tRec=paid.reduce(function(s,x){return s+parseFloat(x.recharge||0);},0);
+  var tFP=fp.reduce(function(s,x){return s+parseFloat(x.fpAmount||0);},0);
+  var tCash=rd.reduce(function(s,x){return s+parseFloat(x.cashoutPaid||0);},0);
+  var tExp=DB.expenses.reduce(function(s,x){return s+parseFloat(x.amount||0);},0);
+  var newP=allE.filter(function(x){return x.isNewPlayer;}).length;
+  var ck=shiftKPIs();
+  var vRows=DB.vendors.map(function(v){
+    var vE=paid.filter(function(x){return x.vendorId===v.id;});
+    var dep=vE.reduce(function(s,x){return s+parseFloat(x.deposit||0);},0);
+    var fee=dep*(parseFloat(v.gatewayFee||0)/100);
+    return '<tr><td>'+esc(v.name)+'</td><td style="color:var(--accent3)">'+fmt$(dep)+'</td><td style="color:var(--danger)">-'+fmt$(fee)+'</td><td style="color:var(--warn);font-weight:700">'+fmt$(dep-fee)+'</td></tr>';
+  }).join('')||'<tr><td colspan="4" class="empty-row">No vendor data</td></tr>';
+  var gRows=DB.games.map(function(g){var b=gameBal(g.id);return '<tr><td>'+esc(g.name)+'</td><td>'+fmt$(g.backendLoaded)+'</td><td style="color:'+(b<0?'var(--danger)':'var(--accent3)')+';font-weight:700">'+fmt$(b)+'</td></tr>';}).join('');
+  var rExp=DB.expenses.slice().reverse().slice(0,5).map(function(ex){return '<tr><td style="font-size:11px">'+esc(ex.date)+'</td><td><span class="exp-pill">'+esc(ex.category)+'</span></td><td>'+esc(ex.description)+'</td><td style="color:var(--danger)">'+fmt$(ex.amount)+'</td></tr>';}).join('')||'<tr><td colspan="4" class="empty-row">No expenses</td></tr>';
+  return '<h2 style="font-size:18px;font-weight:800;margin-bottom:4px">Admin Dashboard</h2>'+
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:16px">'+today()+' · '+DB.closedShifts.length+' closed shifts</div>'+
+    '<div style="background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.15);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap">'+
+      '<span style="font-size:11px;color:var(--text3);font-weight:700;align-self:center">Current Shift →</span>'+
+      '<span style="font-size:12px"><span style="color:var(--text3)">Paid:</span> <strong style="color:var(--accent)">'+ck.paidCount+'</strong></span>'+
+      '<span style="font-size:12px"><span style="color:var(--text3)">Deposit:</span> <strong style="color:var(--accent3)">'+fmt$(ck.totalDeposit)+'</strong></span>'+
+      '<span style="font-size:12px"><span style="color:var(--text3)">Recharge:</span> <strong style="color:var(--accent)">'+fmt$(ck.totalR)+'</strong></span>'+
+      '<span style="font-size:12px"><span style="color:var(--text3)">Cashout:</span> <strong style="color:var(--danger)">'+fmt$(ck.totalCashout)+'</strong></span>'+
+      '<span style="font-size:12px"><span style="color:var(--text3)">FP:</span> <strong style="color:var(--accent2)">'+fmt$(ck.totalFP)+'</strong></span>'+
+    '</div>'+
+    '<div class="akpi">'+
+      kCard('All-Time Recharges',fmt$(tRec),paid.length+' txns','var(--accent)')+
+      kCard('All-Time Deposit',fmt$(tDep),'cash collected','var(--accent3)')+
+      kCard('Total Freeplay',fmt$(tFP),fp.length+' entries','var(--accent2)')+
+      kCard('Cashouts Paid',fmt$(tCash),rd.length+' redeems','var(--danger)')+
+      kCard('New Players',newP,'all time','var(--warn)')+
+      kCard('Total Expenses',fmt$(tExp),DB.expenses.length+' items','var(--text2)')+
+      kCard('Active Games',DB.games.length,'configured','var(--accent)')+
+      kCard('Closed Shifts',DB.closedShifts.length,'archived','var(--text2)')+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'+
+      '<div class="fc">'+fcHead('Game Balances','var(--accent3)')+'<div class="tbl-wrap"><table><thead><tr><th>Game</th><th>Start</th><th>Current</th></tr></thead><tbody>'+gRows+'</tbody></table></div></div>'+
+      '<div class="fc">'+fcHead('Vendor Net After Fee','var(--warn)')+'<div class="tbl-wrap"><table><thead><tr><th>Vendor</th><th>Total</th><th>Fee</th><th>Net</th></tr></thead><tbody>'+vRows+'</tbody></table></div></div>'+
+    '</div>'+
+    '<div class="fc">'+fcHead('Recent Expenses','var(--danger)')+'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th></tr></thead><tbody>'+rExp+'</tbody></table></div></div>';
+}
+
+/* ───── TRANSACTIONS ───── */
+function buildTx(){
+  var allE=DB.entries.map(function(e){return Object.assign({},e,{shiftLabel:'Current'});});
+  DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(Object.assign({},e,{shiftLabel:sh.label||sh.date||'Closed'}));});});
+  var q=(S.txSearch||'').toLowerCase();
+  if(q)allE=allE.filter(function(e){return[e.playerName,e.agent,e.gameId,e.gameName,e.custTag,e.legalName].some(function(v){return(v||'').toLowerCase().indexOf(q)>=0;});});
+  if(S.txType&&S.txType!=='all')allE=allE.filter(function(e){return e.type===S.txType;});
+  if(S.txAgent)allE=allE.filter(function(e){return e.agent===S.txAgent;});
+  if(S.txGame)allE=allE.filter(function(e){return e.gameName===S.txGame;});
+  if(S.txShift)allE=allE.filter(function(e){return e.shift===S.txShift;});
+  if(S.txDate)allE=allE.filter(function(e){return(e.date||'').indexOf(S.txDate)>=0;});
+  var sortMap={date_desc:function(a,b){return b.id.localeCompare(a.id);},date_asc:function(a,b){return a.id.localeCompare(b.id);},deposit_desc:function(a,b){return parseFloat(b.deposit||0)-parseFloat(a.deposit||0);},deposit_asc:function(a,b){return parseFloat(a.deposit||0)-parseFloat(b.deposit||0);},player_asc:function(a,b){return(a.playerName||'').localeCompare(b.playerName||'');},agent_asc:function(a,b){return(a.agent||'').localeCompare(b.agent||'');},};
+  allE.sort(sortMap[S.txSort]||sortMap.date_desc);
+  var tD=allE.filter(function(e){return e.type==='paid';}).reduce(function(s,e){return s+parseFloat(e.deposit||0);},0);
+  var tR=allE.filter(function(e){return e.type==='paid';}).reduce(function(s,e){return s+parseFloat(e.recharge||0);},0);
+  var tC=allE.filter(function(e){return e.type==='redeem';}).reduce(function(s,e){return s+parseFloat(e.cashoutPaid||0);},0);
+  var aOpts=agentNames().map(function(n){return '<option value="'+esc(n)+'"'+(S.txAgent===n?' selected':'')+'>'+esc(n)+'</option>';}).join('');
+  var gOpts2=gameNames().map(function(n){return '<option value="'+esc(n)+'"'+(S.txGame===n?' selected':'')+'>'+esc(n)+'</option>';}).join('');
+  var sOpts=shiftNames().map(function(n){return '<option value="'+esc(n)+'"'+(S.txShift===n?' selected':'')+'>'+esc(n)+'</option>';}).join('');
+  var rows=!allE.length?'<tr><td colspan="11" class="empty-row">No transactions match filters.</td></tr>':
+    allE.map(function(e,i){
+      var amt=e.recharge?fmt$(e.recharge):e.fpAmount?('<span style="color:var(--accent2)">'+fmt$(e.fpAmount)+'</span>'):e.rdCredits?('<span style="color:var(--danger)">-'+fmt$(e.rdCredits)+'</span>'):'—';
+      return '<tr>'+
+        '<td style="color:var(--text3);font-family:var(--mono);font-size:11px">'+(i+1)+'</td>'+
+        '<td><span class="badge '+(e.type==='paid'?'bd-cyan':e.type==='freeplay'?'bd-purple':'bd-red')+'">'+(e.type==='paid'?'Paid':e.type==='freeplay'?'Free':'Redeem')+'</span></td>'+
+        '<td style="font-size:11px;color:var(--text3)">'+esc(e.shiftLabel)+'</td>'+
+        '<td style="font-size:11px;white-space:nowrap">'+esc(e.date||'—')+'</td>'+
+        '<td>'+esc(e.agent||'—')+'</td>'+
+        '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.playerName||'—')+'</td>'+
+        '<td style="font-family:var(--mono);font-size:11px">'+esc(e.gameId||'—')+'</td>'+
+        '<td>'+esc(e.gameName||'—')+'</td>'+
+        '<td style="color:var(--accent3)">'+(e.deposit?fmt$(e.deposit):'—')+'</td>'+
+        '<td>'+amt+'</td>'+
+        '<td style="color:var(--warn)">'+(e.cashoutPaid?fmt$(e.cashoutPaid):'—')+'</td>'+
+      '</tr>';
+    }).join('');
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
+    '<div><h2 style="font-size:17px;font-weight:800">Transaction Log</h2><div style="font-size:11px;color:var(--text3);margin-top:2px">'+allE.length+' records · Dep: '+fmt$(tD)+' · Rec: '+fmt$(tR)+' · Cashout: '+fmt$(tC)+'</div></div>'+
+    '<button class="btn btn-ghost btn-sm" id="tx-clear">Clear Filters</button>'+
+  '</div>'+
+  '<div class="fc" style="margin-bottom:12px"><div class="filter-bar">'+
+    '<input type="text" id="tx-search" placeholder="Search player, agent, ID..." value="'+esc(S.txSearch)+'" style="width:200px">'+
+    '<select id="tx-type" style="width:110px"><option value="all"'+(S.txType==='all'?' selected':'')+'>All Types</option><option value="paid"'+(S.txType==='paid'?' selected':'')+'>Paid</option><option value="freeplay"'+(S.txType==='freeplay'?' selected':'')+'>Freeplay</option><option value="redeem"'+(S.txType==='redeem'?' selected':'')+'>Redeem</option></select>'+
+    '<select id="tx-agent" style="width:140px"><option value="">All Agents</option>'+aOpts+'</select>'+
+    '<select id="tx-game" style="width:140px"><option value="">All Games</option>'+gOpts2+'</select>'+
+    '<select id="tx-shift" style="width:130px"><option value="">All Shifts</option>'+sOpts+'</select>'+
+    '<input type="text" id="tx-date" placeholder="Date filter..." value="'+esc(S.txDate)+'" style="width:120px">'+
+    '<select id="tx-sort" style="width:140px">'+
+      '<option value="date_desc"'+(S.txSort==='date_desc'?' selected':'')+'>Newest First</option>'+
+      '<option value="date_asc"'+(S.txSort==='date_asc'?' selected':'')+'>Oldest First</option>'+
+      '<option value="deposit_desc"'+(S.txSort==='deposit_desc'?' selected':'')+'>Deposit ↓</option>'+
+      '<option value="deposit_asc"'+(S.txSort==='deposit_asc'?' selected':'')+'>Deposit ↑</option>'+
+      '<option value="player_asc"'+(S.txSort==='player_asc'?' selected':'')+'>Player A-Z</option>'+
+      '<option value="agent_asc"'+(S.txSort==='agent_asc'?' selected':'')+'>Agent A-Z</option>'+
+    '</select>'+
+  '</div></div>'+
+  '<div class="fc"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Session</th><th>Date</th><th>Agent</th><th>Player</th><th>Game ID</th><th>Game</th><th>Deposit</th><th>Amount</th><th>Cashout</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* ───── ADMIN ATTENDANCE ───── */
+function buildAdminAtt(){
+  var people=allPeople();
+  var recs=DB.attendance.slice();
+  if(S.afAgent)recs=recs.filter(function(r){return r.agentName===S.afAgent;});
+  if(S.afDate)recs=recs.filter(function(r){return r.date.indexOf(S.afDate)>=0;});
+  if(S.afStatus==='leave')recs=recs.filter(function(r){return r.status==='leave';});
+  else if(S.afStatus==='present')recs=recs.filter(function(r){return r.status!=='leave'&&r.checkIn;});
+  recs.sort(function(a,b){return b.date.localeCompare(a.date);});
+  var stats=people.map(function(a){
+    var ar=DB.attendance.filter(function(r){return r.agentId===a.id;});
+    var pres=ar.filter(function(r){return r.checkIn&&r.status!=='leave';}).length;
+    var lv=ar.filter(function(r){return r.status==='leave';}).length;
+    var mins=ar.filter(function(r){return r.duration;}).reduce(function(s,r){return s+r.duration;},0);
+    return '<div class="kpi-card" style="padding:10px">'+
+      '<div class="kpi-label" style="font-size:9px">'+esc(a.name)+'</div>'+
+      '<div style="display:flex;gap:8px;margin-top:4px"><span style="font-size:12px;color:var(--accent3)">✓ '+pres+'</span><span style="font-size:12px;color:var(--warn)">L '+lv+'</span></div>'+
+      '<div class="kpi-sub">'+Math.floor(mins/60)+'h '+mins%60+'m total</div>'+
+    '</div>';
+  }).join('');
+  var aOpts=people.map(function(a){return '<option value="'+esc(a.name)+'"'+(S.afAgent===a.name?' selected':'')+'>'+esc(a.name)+'</option>';}).join('');
+  var rows=recs.length?recs.map(function(r){
+    var hrs=r.duration?Math.floor(r.duration/60)+'h '+r.duration%60+'m':'—';
+    var sb=r.status==='leave'?'<span class="badge bd-warn">Leave</span>':r.checkOut?'<span class="badge bd-green">Present</span>':'<span class="badge bd-cyan">In</span>';
+    return '<tr>'+
+      '<td style="font-weight:600">'+esc(r.agentName)+'</td>'+
+      '<td style="font-size:11px;white-space:nowrap">'+esc(r.date)+'</td>'+
+      '<td>'+sb+'</td>'+
+      '<td style="font-family:var(--mono);font-size:11px">'+esc(r.checkIn||'—')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:11px">'+esc(r.checkOut||'—')+'</td>'+
+      '<td style="color:var(--accent3)">'+hrs+'</td>'+
+      '<td style="font-size:11px;color:var(--text3)">'+esc(r.leaveReason||'—')+'</td>'+
+      '<td><button class="ibtn del" data-del-att="'+r.id+'">Del</button></td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="8" class="empty-row">No records found.</td></tr>';
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Attendance Management</h2>'+
+    '<div class="akpi">'+stats+'</div>'+
+    '<div class="fc" style="margin-bottom:12px"><div class="filter-bar">'+
+      '<select id="af-agent" style="width:160px"><option value="">All Employees</option>'+aOpts+'</select>'+
+      '<input type="text" id="af-date" placeholder="Date filter..." value="'+esc(S.afDate)+'" style="width:140px">'+
+      '<select id="af-status" style="width:130px"><option value="">All Status</option><option value="present"'+(S.afStatus==='present'?' selected':'')+'>Present</option><option value="leave"'+(S.afStatus==='leave'?' selected':'')+'>Leave</option></select>'+
+      '<button class="btn btn-ghost btn-sm" id="af-clear">Clear</button>'+
+      '<button class="btn btn-ghost btn-sm" id="export-att" style="margin-left:auto">⬇ Export CSV</button>'+
+    '</div></div>'+
+    '<div class="fc"><div class="tbl-wrap"><table><thead><tr><th>Employee</th><th>Date</th><th>Status</th><th>Check In</th><th>Check Out</th><th>Hours</th><th>Reason</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* ───── ADMIN SHIFTS ───── */
+function buildAShifts(){
+  var rows=DB.shifts.map(function(s){return '<tr><td style="font-weight:600">'+esc(s.name)+'</td><td>'+esc(s.start)+'</td><td>'+esc(s.end)+'</td><td><button class="ibtn del" data-del-shift="'+s.id+'">Del</button></td></tr>';}).join('');
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Shifts</h2><div class="fc"><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Start</th><th>End</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="sub-bar"><button class="btn btn-primary btn-sm" id="add-shift-btn">+ Add Shift</button></div></div>';
+}
+
+/* ───── ADMIN AGENTS ───── */
+function buildAAgents(){
+  var rows=DB.agents.map(function(a){return '<tr><td style="font-weight:600">'+esc(a.name)+'</td><td><span class="badge bd-cyan">'+esc(a.role)+'</span></td><td><button class="ibtn del" data-del-agent="'+a.id+'">Del</button></td></tr>';}).join('');
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Agents</h2><div class="fc"><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Role</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="sub-bar"><button class="btn btn-primary btn-sm" id="add-agent-btn">+ Add Agent</button></div></div>';
+}
+
+/* ───── ADMIN STAFF ───── */
+function buildAStaff(){
+  var rc={owner:'bd-warn',admin:'bd-cyan',manager:'bd-purple',supervisor:'bd-green',agent:'bd-gray'};
+  var rows=DB.staff.length?DB.staff.map(function(m){
+    return '<tr><td style="font-weight:600">'+esc(m.name)+'</td><td style="font-size:11px;color:var(--text2)">'+esc(m.email||'—')+'</td>'+
+      '<td><span class="badge '+(rc[m.role]||'bd-gray')+'" style="text-transform:capitalize">'+esc(m.role)+'</span></td>'+
+      '<td style="font-size:11px;color:var(--text3)">'+(m.perms||[]).length+'/'+PERM_LIST.length+'</td>'+
+      '<td><div class="abtns"><button class="ibtn" data-edit-staff="'+m.id+'">Edit</button><button class="ibtn del" data-del-staff="'+m.id+'">Del</button></div></td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="5" class="empty-row">No staff added yet.</td></tr>';
+  var defHtml=Object.keys(ROLE_DEF).map(function(role){
+    var perms=ROLE_DEF[role];var cls=rc[role]||'bd-gray';
+    var labels=perms.map(function(p){var f=PERM_LIST.find(function(x){return x.id===p;});return f?f.label:p;}).join(' · ');
+    return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px">'+
+      '<div style="margin-bottom:8px"><span class="badge '+cls+'" style="text-transform:capitalize">'+role+'</span></div>'+
+      '<div style="font-size:11px;color:var(--text3)">'+perms.length+' permissions</div>'+
+      '<div style="margin-top:6px;font-size:10px;color:var(--text3);line-height:1.8">'+labels+'</div>'+
+    '</div>';
+  }).join('');
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Staff &amp; Access Control</h2>'+
+    '<div class="fc" style="margin-bottom:16px">'+fcHead('Staff Members','var(--accent2)')+'<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Perms</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="sub-bar"><button class="btn btn-purple btn-sm" id="add-staff-btn">+ Add Staff Member</button></div></div>'+
+    '<div class="fc">'+fcHead('Role Defaults','var(--warn)')+'<div style="padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">'+defHtml+'</div></div>';
+}
+
+/* ───── ADMIN GAMES ───── */
+function buildAGames(){
+  var IST=inpStyle;
+  var rows=DB.games.map(function(g){
+    var vendor=DB.vendors.find(function(v){return v.id===g.vendorId;});
+    var bal=gameBal(g.id);
+    if(S.editGameId===g.id){
+      var vOpts=DB.vendors.map(function(v){return{value:v.id,label:v.name};});
+      return '<tr style="background:rgba(0,229,255,.04)">'+
+        '<td><input id="ge-name" value="'+esc(g.name)+'" '+IST('130px')+'></td>'+
+        '<td>'+sel('ge-vendor',g.vendorId,vOpts,'-- None --')+'</td>'+
+        '<td><input type="number" id="ge-bal" value="'+esc(g.backendLoaded)+'" step="0.01" '+IST('100px')+'></td>'+
+        '<td style="color:'+(bal<0?'var(--danger)':'var(--accent3)')+';font-weight:700">'+fmt$(bal)+'</td>'+
+        '<td><input type="number" id="ge-price" value="'+esc(g.pricePer1k)+'" step="0.01" '+IST('70px')+'></td>'+
+        '<td><input type="url" id="ge-blink" value="'+esc(g.backendLink||'')+'" placeholder="https://..." '+IST('120px')+'></td>'+
+        '<td><input type="url" id="ge-plink" value="'+esc(g.playerLink||'')+'" placeholder="https://..." '+IST('120px')+'></td>'+
+        '<td><input id="ge-user" value="'+esc(g.username||'')+'" placeholder="Username" '+IST('100px')+'></td>'+
+        '<td><input type="password" id="ge-pass" value="'+esc(g.password||'')+'" placeholder="Password" '+IST('100px')+'></td>'+
+        '<td><div class="abtns"><button class="ibtn rl" data-save-game="'+g.id+'">✓ Save</button><button class="ibtn" data-cancel-game>Cancel</button></div></td>'+
+      '</tr>';
+    }
+    return '<tr>'+
+      '<td style="font-weight:600">'+esc(g.name)+'</td>'+
+      '<td>'+(vendor?'<span class="badge bd-purple">'+esc(vendor.name)+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>'+
+      '<td style="font-family:var(--mono)">'+fmt$(g.backendLoaded)+'</td>'+
+      '<td style="font-family:var(--mono);color:'+(bal<0?'var(--danger)':'var(--accent3)')+';font-weight:700">'+fmt$(bal)+'</td>'+
+      '<td style="font-size:11px;color:var(--text3)">$'+esc(g.pricePer1k)+'/1k</td>'+
+      '<td>'+(g.backendLink?'<a href="'+esc(g.backendLink)+'" target="_blank" style="color:var(--accent);font-size:11px;text-decoration:none">Open ↗</a>':'<span style="color:var(--text3)">—</span>')+'</td>'+
+      '<td>'+(g.playerLink?'<a href="'+esc(g.playerLink)+'" target="_blank" style="color:var(--accent2);font-size:11px;text-decoration:none">Open ↗</a>':'<span style="color:var(--text3)">—</span>')+'</td>'+
+      '<td style="font-size:11px;color:var(--text3)">'+(g.username?'••••':'—')+'</td>'+
+      '<td style="font-size:11px;color:var(--text3)">'+(g.password?'••••':'—')+'</td>'+
+      '<td><div class="abtns">'+
+        '<button class="ibtn rl" data-topup="'+g.id+'">+Reload</button>'+
+        '<button class="ibtn wb" data-setbal="'+g.id+'">Set Bal</button>'+
+        '<button class="ibtn" data-edit-game="'+g.id+'">Edit</button>'+
+        '<button class="ibtn del" data-del-game="'+g.id+'">Del</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
+    '<h2 style="font-size:17px;font-weight:800">Games</h2>'+
+    '<button class="btn btn-primary btn-sm" id="add-game-btn">+ Add Game</button>'+
+  '</div>'+
+  '<div class="fc"><div class="tbl-wrap"><table><thead><tr><th>Game</th><th>Vendor</th><th>Start Bal</th><th>Cur Bal</th><th>Price/1k</th><th>Backend</th><th>Player</th><th>User</th><th>Pass</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* ───── ADMIN PAY METHODS ───── */
+function buildAPM(){
+  var html='<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Payment Methods</h2>';
+  DB.payMethods.forEach(function(m){
+    var tags=m.tags.map(function(t){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;margin-bottom:6px;font-size:12px">'+
+        '<span style="font-family:var(--mono)">'+esc(t.tag)+'</span><button class="ibtn del" data-del-tag="'+m.id+'__'+t.id+'">Del</button></div>';
+    }).join('');
+    html+='<div class="fc" style="margin-bottom:12px">'+
+      '<div class="fc-head" style="justify-content:space-between;padding-right:8px"><div style="display:flex;align-items:center;gap:8px"><div class="fc-dot" style="background:var(--warn)"></div><div class="fc-title">'+esc(m.name)+'</div></div><button class="ibtn del" data-del-pm="'+m.id+'">Del</button></div>'+
+      '<div style="padding:12px 16px">'+tags+
+        '<div style="display:flex;gap:8px;margin-top:8px">'+
+          '<input type="text" id="new-tag-'+m.id+'" placeholder="Add tag..." style="flex:1;background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px;font-family:var(--font)" autocomplete="off">'+
+          '<button class="btn btn-warn btn-xs" data-add-tag="'+m.id+'">+ Add</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  });
+  html+='<div class="fc"><div class="sub-bar" style="background:transparent;border:none;justify-content:flex-start"><button class="btn btn-primary btn-sm" id="add-pm-btn">+ Add Method</button></div></div>';
+  return html;
+}
+
+/* ───── ADMIN PAGES ───── */
+function buildAPages(){
+  var items=DB.pageNames.map(function(p){return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:13px">'+esc(p.name)+'<button class="ibtn del" data-del-page="'+p.id+'">Del</button></div>';}).join('');
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Page Names</h2>'+
+    '<div class="fc">'+fcHead('Facebook Pages','var(--bg3)')+'<div style="padding:14px 16px">'+items+
+      '<div style="display:flex;gap:8px;margin-top:8px"><input type="text" id="new-page-name" placeholder="Page name..." style="flex:1;background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;font-family:var(--font)" autocomplete="off"><button class="btn btn-primary btn-sm" id="add-page-btn">+ Add</button></div>'+
+    '</div></div>';
+}
+
+/* ───── ADMIN VENDORS ───── */
+function buildAVendors(){
+  var allE=DB.entries.slice();DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(e);});});
+  var paid=allE.filter(function(e){return e.type==='paid';});
+  var cards=DB.vendors.map(function(v){
+    var vE=paid.filter(function(e){return e.vendorId===v.id;});
+    var dep=vE.reduce(function(s,e){return s+parseFloat(e.deposit||0);},0);
+    var fee=dep*(parseFloat(v.gatewayFee||0)/100);
+    var net=dep-fee;
+    var method=DB.payMethods.find(function(m){return m.id===v.payMethodId;});
+    var pmOpts=DB.payMethods.map(function(m){return{value:m.id,label:m.name};});
+    return '<div class="fc" style="margin-bottom:12px">'+
+      '<div class="fc-head" style="justify-content:space-between;padding-right:8px"><div style="display:flex;align-items:center;gap:8px"><div class="fc-dot" style="background:var(--accent2)"></div><div class="fc-title">'+esc(v.name)+'</div></div><button class="ibtn del" data-del-vendor="'+v.id+'">Del</button></div>'+
+      '<div class="fg c4" style="padding-bottom:0">'+
+        fld('Vendor Name',false,'<input type="text" value="'+esc(v.name)+'" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%" onchange="updV(\''+v.id+'\',\'name\',this.value)" autocomplete="off">')+
+        fld('Pay Method',false,sel('vpm-'+v.id,v.payMethodId,pmOpts))+
+        fld('Pay Tag',false,'<input type="text" value="'+esc(v.payTag||'')+'" placeholder="$tag / email" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%" onchange="updV(\''+v.id+'\',\'payTag\',this.value)" autocomplete="off">')+
+        fld('Gateway Fee (%)',false,'<input type="number" value="'+esc(v.gatewayFee||0)+'" step="0.1" placeholder="2.5" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%" onchange="updV(\''+v.id+'\',\'gatewayFee\',this.value)" autocomplete="off">')+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:12px 16px">'+
+        kCard('Total Received',fmt$(dep),vE.length+' txns','var(--accent3)')+
+        kCard('Gateway Fee ('+parseFloat(v.gatewayFee||0)+'%)','-'+fmt$(fee),'vendor deducts','var(--danger)')+
+        kCard('Net You Receive',fmt$(net),'after gateway fee','var(--warn)')+
+        kCard('Pay Method',method?method.name:'—',esc(v.payTag||'No tag'),'var(--text2)')+
+      '</div>'+
+    '</div>';
+  }).join('');
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Vendors</h2>'+cards+
+    '<div class="fc"><div class="sub-bar" style="background:transparent;border:none;justify-content:flex-start"><button class="btn btn-primary btn-sm" id="add-vendor-btn">+ Add Vendor</button></div></div>';
+}
+window.updV=function(vid,field,val){var v=DB.vendors.find(function(x){return x.id===vid;});if(v){v[field]=val;saveDB();}};
+function bindVPM(){DB.vendors.forEach(function(v){var el=document.getElementById('vpm-'+v.id);if(el)el.addEventListener('change',function(){updV(v.id,'payMethodId',el.value);});});}
+
+/* ───── ADMIN EXPENSES ───── */
+function buildAExp(){
+  var total=DB.expenses.reduce(function(s,e){return s+parseFloat(e.amount||0);},0);
+  var byCat={};DB.expenses.forEach(function(e){byCat[e.category]=(byCat[e.category]||0)+parseFloat(e.amount||0);});
+  var catSum=Object.keys(byCat).map(function(c){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px"><span class="exp-pill">'+esc(c)+'</span><span style="font-weight:700;color:var(--danger)">'+fmt$(byCat[c])+'</span></div>';}).join('')+(Object.keys(byCat).length?'<div style="display:flex;justify-content:space-between;padding:10px 0;font-weight:700;font-size:13px"><span>Total</span><span style="color:var(--danger)">'+fmt$(total)+'</span></div>':'<div class="empty-row">No expenses yet</div>');
+  var catOpts=DB.expCats.map(function(c){return{value:c.name,label:c.name};});
+  var rows=DB.expenses.slice().reverse().map(function(ex){return '<tr><td style="font-size:11px;white-space:nowrap">'+esc(ex.date)+'</td><td><span class="exp-pill">'+esc(ex.category)+'</span></td><td>'+esc(ex.description)+'</td><td style="color:var(--danger);font-weight:600">'+fmt$(ex.amount)+'</td><td><button class="ibtn del" data-del-exp="'+ex.id+'">Del</button></td></tr>';}).join('')||'<tr><td colspan="5" class="empty-row">No expenses</td></tr>';
+  var pills=DB.expCats.map(function(c){return '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;font-size:11px;margin:2px">'+esc(c.name)+'<button class="ibtn del" style="padding:1px 5px;font-size:10px" data-del-excat="'+c.id+'">✕</button></div>';}).join('');
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Expenses</h2>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'+
+      '<div class="fc">'+fcHead('Add Expense','var(--danger)')+'<div class="fg c2">'+fld('Date',true,inp('exp-date',today(),''))+fld('Category',true,sel('exp-cat','',catOpts))+'</div><div class="fg c2" style="padding-top:0">'+fld('Description',true,inp('exp-desc','','Brief description'))+fld('Amount ($)',true,numinp('exp-amt','','0.00'))+'</div><div class="sub-bar"><button class="btn btn-danger btn-sm" id="add-exp-btn">+ Add</button></div></div>'+
+      '<div class="fc">'+fcHead('By Category','var(--accent2)')+'<div style="padding:14px 16px">'+catSum+'</div></div>'+
+    '</div>'+
+    '<div style="margin-bottom:12px;display:flex;flex-wrap:wrap;align-items:center;gap:6px"><span style="font-size:11px;color:var(--text3)">Categories:</span>'+pills+'<div style="display:flex;gap:6px"><input type="text" id="new-excat" placeholder="New category..." style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:4px 10px;color:var(--text);font-size:12px;font-family:var(--font);width:150px" autocomplete="off"><button class="btn btn-ghost btn-xs" id="add-excat-btn">+ Add</button></div></div>'+
+    '<div class="fc">'+fcHead('All Expenses','var(--danger)')+'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* ───── SUPABASE ───── */
+function buildSupabase(){
+  var sb=DB.supabase;var ok=sb.enabled&&sb.url&&sb.anonKey;
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Supabase Integration</h2>'+
+    '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;font-size:12px;border:1px solid var(--border2);background:var(--bg3);margin-bottom:20px">'+
+      '<div style="width:8px;height:8px;border-radius:50%;background:'+(ok?'var(--accent3)':sb.url?'var(--danger)':'var(--text3)') +'"></div>'+
+      '<span style="font-weight:600">'+(ok?'Connected':sb.url?'Not connected — check credentials':'Not configured')+'</span>'+
+    '</div>'+
+    '<div class="fc" style="margin-bottom:16px">'+fcHead('Connection Settings','var(--accent3)')+
+    '<div class="fg" style="grid-template-columns:1fr">'+fld('Project URL',true,inp('sb-url',sb.url,'https://xxxx.supabase.co','url'))+fld('Anon Key',true,'<input type="text" id="sb-key" value="'+esc(sb.anonKey)+'" placeholder="eyJhbGci..." style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%;font-family:var(--font)" autocomplete="off">')+'</div>'+
+    '<div style="padding:0 16px 12px"><div class="desc-note">Go to Supabase → Settings → API for your Project URL and anon public key.</div></div>'+
+    '<div class="sub-bar" style="justify-content:space-between"><button class="btn btn-ghost btn-sm" id="sb-test">Test Connection</button><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" id="sb-disable">'+(sb.enabled?'Disable':'Keep Disabled')+'</button><button class="btn btn-success btn-sm" id="sb-save">Save &amp; Enable</button></div></div></div>'+
+    '<div id="sb-msg" style="font-size:12px;color:var(--text3);padding:8px 0"></div>';
+}
+
+/* ───── BACKUP ───── */
+function buildBackup(){
+  var tc=DB.entries.length;DB.closedShifts.forEach(function(sh){tc+=(sh.entries||[]).length;});
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Backup &amp; Export</h2>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+      '<div class="fc">'+fcHead('Export','var(--accent3)')+'<div style="padding:16px;display:grid;gap:10px">'+
+        '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px">'+
+          '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Total Entries</span><strong>'+tc+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text3)">Closed Shifts</span><strong>'+DB.closedShifts.length+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Expenses</span><strong>'+DB.expenses.length+'</strong></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          '<button class="btn btn-success btn-sm" id="export-json">⬇ JSON Backup</button>'+
+          '<button class="btn btn-primary btn-sm" id="export-csv">⬇ Entries CSV</button>'+
+          '<button class="btn btn-warn btn-sm" id="export-csv-exp">⬇ Expenses CSV</button>'+
+        '</div>'+
+      '</div></div>'+
+      '<div class="fc">'+fcHead('Restore','var(--accent2)')+'<div style="padding:16px;display:grid;gap:10px">'+
+        '<div style="font-size:12px;color:var(--text2)">Upload a JSON backup. <strong style="color:var(--danger)">This overwrites all data.</strong></div>'+
+        '<div style="background:var(--bg3);border:1px dashed var(--border3);border-radius:8px;padding:20px;text-align:center">'+
+          '<div style="font-size:24px;margin-bottom:8px">📁</div>'+
+          '<input type="file" id="restore-file" accept=".json" style="display:none">'+
+          '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'restore-file\').click()">Choose File</button>'+
+          '<div id="restore-name" style="font-size:11px;color:var(--text3);margin-top:8px">No file selected</div>'+
+        '</div>'+
+        '<button class="btn btn-danger btn-sm" id="restore-btn" disabled>⚠ Restore Backup</button>'+
+      '</div></div>'+
+    '</div>';
+}
+
+/* ───── MODALS ───── */
+function buildModal(){
+  var m=S.modal;
+  if(m.type==='closeShift')return buildCloseModal();
+  if(m.type==='addShift')return mWrap('Add Shift','','<div class="fg c3">'+fld('Name',true,inp('ms-name','','Morning'))+fld('Start',true,'<input type="time" id="ms-start" value="06:00" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%">')+fld('End',true,'<input type="time" id="ms-end" value="14:00" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%">')+'</div>','<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-shift">Save</button>',true);
+  if(m.type==='addAgent')return mWrap('Add Agent','','<div class="fg c2">'+fld('Full Name',true,inp('ma-name','','Agent name'))+fld('Role',true,inp('ma-role','Agent','Agent / Senior Agent'))+'</div>','<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-agent">Save</button>',true);
+  if(m.type==='addGame')return buildAddGameModal();
+  if(m.type==='addPM')return mWrap('Add Payment Method','','<div class="fg">'+fld('Method Name',true,inp('mpm-name','','e.g. Cash App'))+'</div>','<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-pm">Save</button>',true);
+  if(m.type==='addVendor')return buildAddVendorModal();
+  if(m.type==='addStaff')return buildStaffModal(null);
+  if(m.type==='editStaff')return buildStaffModal(m.staff);
+  if(m.type==='editEntry')return buildEditEntryModal(m.entry);
+  return '';
+}
+function mWrap(title,sub,body,footer,sm){
+  return '<div class="moverlay" id="moverlay"><div class="modal'+(sm?' modal-sm':'')+'">'+
+    '<div class="mhead"><div><div class="mtitle">'+title+'</div>'+(sub?'<div class="msub">'+sub+'</div>':'')+'</div><button class="mclose" id="m-close">&times;</button></div>'+
+    '<div class="mbody">'+body+'</div><div class="mfooter">'+footer+'</div></div></div>';
+}
+function buildAddGameModal(){
+  var vOpts=DB.vendors.map(function(v){return{value:v.id,label:v.name};});
+  return mWrap('Add New Game','',
+    '<div class="fg c2">'+fld('Game Name',true,inp('mg-name','','e.g. Fish Table'))+fld('Starting Balance ($)',true,numinp('mg-bal','','0.00'))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Vendor',false,sel('mg-vendor','',vOpts,'-- No Vendor --'))+fld('Price / 1000 Credits',false,numinp('mg-price','10',''))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Backend Link',false,inp('mg-blink','','https://...','url'))+fld('Player Link',false,inp('mg-plink','','https://...','url'))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Username',false,inp('mg-user','','Login user'))+fld('Password',false,inp('mg-pass','','Login pass','password'))+'</div>',
+    '<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-game">Save Game</button>');
+}
+function buildAddVendorModal(){
+  var pmOpts=DB.payMethods.map(function(m){return{value:m.id,label:m.name};});
+  return mWrap('Add Vendor','',
+    '<div class="fg c2">'+fld('Vendor Name',true,inp('mv-name','','Vendor name'))+fld('Gateway Fee (%)',false,numinp('mv-comm','0','0.0'))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Pay Method',false,sel('mv-pm','',pmOpts))+fld('Pay Tag',false,inp('mv-tag','','$tag / @handle'))+'</div>',
+    '<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-vendor">Save</button>');
+}
+function permGrid(gid,active){
+  var items=PERM_LIST.map(function(p){var on=active.indexOf(p.id)>=0;return '<div class="perm-item'+(on?' on':'')+'" id="'+gid+'-'+p.id+'" data-perm="'+p.id+'"><div class="perm-cb">'+(on?'✓':'')+'</div><span>'+p.label+'</span></div>';}).join('');
+  return '<div class="perm-grid" id="'+gid+'">'+items+'</div>';
+}
+function buildStaffModal(m){
+  var isEdit=!!m;
+  var active=m?(m.perms||[]):[];
+  var roleOpts='<option value="">-- Select Role --</option><option value="admin"'+(m&&m.role==='admin'?' selected':'')+'>Admin</option><option value="manager"'+(m&&m.role==='manager'?' selected':'')+'>Manager</option><option value="supervisor"'+(m&&m.role==='supervisor'?' selected':'')+'>Supervisor</option>';
+  var extra=isEdit?'<div style="display:flex;gap:6px;margin-bottom:8px"><button class="btn btn-xs btn-ghost" id="perms-all">All</button><button class="btn btn-xs btn-ghost" id="perms-none">None</button><button class="btn btn-xs btn-ghost" id="perms-role">Reset to Role</button></div>':'';
+  var gid=isEdit?'pg-edit':'pg-new';
+  var body='<div class="fg c2">'+fld('Full Name',true,inp('sm-name',m?m.name:'','Full name'))+fld('Email',false,inp('sm-email',m?m.email||'':'','email@example.com','email'))+'</div>'+
+    '<div class="fg c2" style="padding-top:0"><div class="field"><label>Role<span class="req">*</span></label><select id="sm-role">'+roleOpts+'</select></div>'+
+    fld('PIN / Password',false,'<input type="password" id="sm-pin" value="'+(m?esc(m.pin||''):'')+'" placeholder="'+(isEdit?'Leave blank to keep':'Optional')+'" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%;font-family:var(--font)" autocomplete="off">')+'</div>'+
+    '<div style="padding:0 16px 14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Permissions</div>'+extra+permGrid(gid,active)+'</div>';
+  var savId=isEdit?'m-save-staff-edit':'m-save-staff';
+  var savLabel=isEdit?'Save Changes':'Add Staff Member';
+  var footer='<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-purple btn-sm" id="'+savId+'"'+(isEdit?' data-sid="'+m.id+'"':'')+'>'+savLabel+'</button>';
+  return mWrap(isEdit?'Edit Staff Member':'Add Staff Member',isEdit?'ID: '+m.id:'Manager, Supervisor or Admin',body,footer);
+}
+function buildCloseModal(){
+  var rows=DB.games.map(function(g){
+    var calc=gameBal(g.id);
+    var entered=S.modal.balances&&S.modal.balances[g.id]!==undefined?S.modal.balances[g.id]:'';
+    var diff=entered!==''?parseFloat(entered)-calc:null;
+    var ok=diff!==null&&Math.abs(diff)<0.01;
+    var bc=entered===''?'var(--border2)':ok?'var(--accent3)':'var(--danger)';
+    var diffHtml=diff!==null?('<div id="csd-'+g.id+'" style="margin-top:4px;font-size:11px;color:'+(ok?'var(--accent3)':'var(--danger)')+'">'+( ok?'✓ Matches':'⚠ Difference: '+fmt$(Math.abs(diff)))+'</div>'):'<div id="csd-'+g.id+'"></div>';
+    return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:600">'+esc(g.name)+'</span><span style="font-size:11px;color:var(--text3)">System: <strong style="color:var(--accent3)">'+fmt$(calc)+'</strong></span></div>'+
+      '<input type="number" data-csg="'+g.id+'" data-calc="'+calc+'" value="'+esc(entered)+'" placeholder="Actual closing balance" step="0.01" style="width:100%;background:var(--inp);border:1px solid '+bc+';border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;font-family:var(--font)" autocomplete="off">'+
+      diffHtml+
+    '</div>';
+  }).join('');
+  return mWrap('Close Shift','Enter actual game balances to verify.',
+    '<div style="padding:0 16px">'+rows+'</div>',
+    '<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-danger btn-sm" id="m-confirm-close">Confirm &amp; Close Shift</button>');
+}
+function buildEditEntryModal(e){
+  var isPaid=e.type==='paid',isFp=e.type==='freeplay',isRd=e.type==='redeem';
+  var pmOpts=DB.payMethods.map(function(m){return{value:m.id,label:m.name};});
+  var tagOpts=e.payMethodId?tagsFor(e.payMethodId).map(function(t){return{value:t.id,label:t.tag};}):[];
+  var body='';
+  if(isPaid){body='<div class="fg c3" style="padding-top:14px">'+fld('Date',true,inp('em-date',e.date,''))+fld('Shift',true,sel('em-shift',e.shift,gOpts(shiftNames())))+fld('Agent',true,sel('em-agent',e.agent,gOpts(agentNames())))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Player Name',true,inp('em-pname',e.playerName||'',''))+fld('Facebook URL',false,inp('em-purl',e.playerUrl||'','','url'))+'</div>'+
+    '<div class="fg c4" style="padding-top:0">'+fld('Deposit',true,numinp('em-dep',e.deposit||'',''))+fld('Recharge',true,numinp('em-rec',e.recharge||'',''))+fld('Game ID',true,inp('em-gid',e.gameId||'',''))+fld('Game',true,sel('em-gname',e.gameName||'',gOpts(gameNames())))+'</div>'+
+    '<div class="fg c3" style="padding-top:0">'+fld('Pay Method',true,sel('em-pm',e.payMethodId||'',pmOpts))+fld('Pay Tag',false,sel('em-ptag',e.payTagId||'',tagOpts))+fld('Customer Tag',true,inp('em-ctag',e.custTag||'',''))+'</div>'+
+    '<div class="fg c4" style="padding-top:0">'+fld('Sales Agent',false,sel('em-sname',e.salesName||'',gOpts(agentNames()),'--'))+fld('Legal Name',false,inp('em-lname',e.legalName||'',''))+fld('Contact',false,inp('em-contact',e.contact||'','','tel'))+fld('Email',false,inp('em-email',e.email||'','','email'))+'</div>';}
+  else if(isFp){body='<div class="fg c3" style="padding-top:14px">'+fld('Date',true,inp('em-date',e.date,''))+fld('Shift',true,sel('em-shift',e.shift,gOpts(shiftNames())))+fld('Agent',true,sel('em-agent',e.agent,gOpts(agentNames())))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Player Name',true,inp('em-pname',e.playerName||'',''))+fld('FP Amount ($)',true,numinp('em-fpamt',e.fpAmount||'',''))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Game ID',true,inp('em-gid',e.gameId||'',''))+fld('Game Name',true,sel('em-gname',e.gameName||'',gOpts(gameNames())))+'</div>';}
+  else if(isRd){body='<div class="fg c3" style="padding-top:14px">'+fld('Date',true,inp('em-date',e.date,''))+fld('Shift',true,sel('em-shift',e.shift,gOpts(shiftNames())))+fld('Agent',true,sel('em-agent',e.agent,gOpts(agentNames())))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Game ID',true,inp('em-gid',e.gameId||'',''))+fld('Game Name',true,sel('em-gname',e.gameName||'',gOpts(gameNames())))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Redeem Credits',true,numinp('em-cred',e.rdCredits||'',''))+fld('Cashout Paid ($)',true,numinp('em-cash',e.cashoutPaid||'',''))+'</div>';}
+  return mWrap('Edit '+(isPaid?'Paid':isFp?'Freeplay':'Redeem'),'Entry ID: '+e.id,body,
+    '<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-entry" data-eid="'+e.id+'" data-etype="'+e.type+'">Save Changes</button>');
+}
+
+/* ───── CLOSED SCREEN ───── */
+function buildClosed(){
+  var r=S.shiftReport||{};
+  var rep=r.rows?'<div class="shift-report">'+r.rows.map(function(row){return '<div class="sr-row"><span>'+row.label+'</span><span style="color:var(--accent)">'+row.val+'</span></div>';}).join('')+'</div>':'';
+  return '<div style="display:flex;flex-direction:column;height:100vh">'+buildTopbar()+
+    '<div class="closed-screen"><div style="font-size:56px">🔐</div>'+
+    '<div style="font-size:24px;font-weight:800;color:var(--accent)">Shift Closed</div>'+
+    '<div style="font-size:13px;color:var(--text3)">All transactions saved — view in Admin → Transactions.</div>'+
+    rep+'<button class="btn btn-primary" id="new-shift-btn">Start New Shift</button></div></div>';
+}
+
+/* ═══════════════════════════════════════════════════
+   BIND ALL EVENTS
+═══════════════════════════════════════════════════ */
+function bindAll(){
+  function on(id,ev,fn){var el=document.getElementById(id);if(el)el.addEventListener(ev,fn);}
+  function all(sel,fn){document.querySelectorAll(sel).forEach(fn);}
+
+  /* NAV */
+  all('[data-nav]',function(el){el.addEventListener('click',function(){S.page=el.dataset.nav;render();});});
+  all('[data-stab]',function(el){el.addEventListener('click',function(){S.shiftTab=el.dataset.stab;render();});});
+  all('[data-ef]',function(el){el.addEventListener('click',function(){S.eFilter=el.dataset.ef;render();});});
+  all('[data-asec]',function(el){el.addEventListener('click',function(){S.adminSection=el.dataset.asec;render();});});
+
+  /* CLOSE SHIFT */
+  on('btn-close-shift','click',function(){S.modal={type:'closeShift',balances:{}};render();});
+  on('new-shift-btn','click',function(){DB.entries=[];DB.shiftStart=new Date().toISOString();saveDB();S.page='shift';S.shiftReport=null;S.shiftTab='paid';render();});
+
+  /* ENTRY ACTIONS */
+  all('[data-edit-entry]',function(b){b.addEventListener('click',function(){var e=DB.entries.find(function(x){return x.id===b.dataset.editEntry;});if(e){S.modal={type:'editEntry',entry:Object.assign({},e)};render();}});});
+  all('[data-del-entry]',function(b){b.addEventListener('click',function(){if(confirm('Delete this entry?')){DB.entries=DB.entries.filter(function(e){return e.id!==b.dataset.delEntry;});saveDB();render();}});});
+
+  /* GAME ACTIONS */
+  on('add-game-btn','click',function(){S.modal={type:'addGame'};render();});
+  all('[data-edit-game]',function(b){b.addEventListener('click',function(){S.editGameId=b.dataset.editGame;render();});});
+  all('[data-cancel-game]',function(b){b.addEventListener('click',function(){S.editGameId=null;render();});});
+  all('[data-del-game]',function(b){b.addEventListener('click',function(){if(confirm('Remove game?')){DB.games=DB.games.filter(function(g){return g.id!==b.dataset.delGame;});saveDB();render();}});});
+  all('[data-save-game]',function(b){b.addEventListener('click',function(){
+    var g=DB.games.find(function(x){return x.id===b.dataset.saveGame;});if(!g)return;
+    g.name=document.getElementById('ge-name').value||g.name;
+    g.vendorId=document.getElementById('ge-vendor').value||'';
+    g.backendLoaded=parseFloat(document.getElementById('ge-bal').value)||g.backendLoaded;
+    g.pricePer1k=parseFloat(document.getElementById('ge-price').value)||g.pricePer1k;
+    g.backendLink=document.getElementById('ge-blink').value||'';
+    g.playerLink=document.getElementById('ge-plink').value||'';
+    g.username=document.getElementById('ge-user').value||'';
+    g.password=document.getElementById('ge-pass').value||'';
+    saveDB();S.editGameId=null;render();
+  });});
+  all('[data-topup]',function(b){b.addEventListener('click',function(){
+    var g=DB.games.find(function(x){return x.id===b.dataset.topup;});if(!g)return;
+    var added=prompt('Top-up backend for "'+g.name+'"\nCurrent balance: $'+gameBal(g.id).toFixed(2)+'\nStart balance: $'+parseFloat(g.backendLoaded).toFixed(2)+'\n\nAmount being ADDED to backend:');
+    if(added===null)return;var val=parseFloat(added);
+    if(isNaN(val)||val<=0){alert('Enter a valid positive amount.');return;}
+    g.backendLoaded=parseFloat(g.backendLoaded||0)+val;
+    if(!g.reloadHistory)g.reloadHistory=[];
+    g.reloadHistory.push({date:today(),amount:val,at:new Date().toISOString()});
+    saveDB();render();
+  });});
+  all('[data-setbal]',function(b){b.addEventListener('click',function(){
+    var g=DB.games.find(function(x){return x.id===b.dataset.setbal;});if(!g)return;
+    var nb=prompt('Set EXACT starting balance for "'+g.name+'"\n(Current: $'+parseFloat(g.backendLoaded).toFixed(2)+')');
+    if(nb===null)return;var val=parseFloat(nb);if(isNaN(val)){alert('Invalid');return;}
+    g.backendLoaded=val;saveDB();render();
+  });});
+
+  /* TX FILTERS */
+  function txBind(id,key){var el=document.getElementById(id);if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',function(){S[key]=el.value;render();});}
+  txBind('tx-search','txSearch');txBind('tx-type','txType');txBind('tx-agent','txAgent');txBind('tx-game','txGame');txBind('tx-shift','txShift');txBind('tx-date','txDate');txBind('tx-sort','txSort');
+  on('tx-clear','click',function(){S.txSearch='';S.txType='all';S.txAgent='';S.txGame='';S.txShift='';S.txDate='';S.txSort='date_desc';render();});
+
+  /* ATTENDANCE AGENT PANEL */
+  all('[data-checkin]',function(b){b.addEventListener('click',function(){
+    var aid=b.dataset.checkin;
+    var a=DB.agents.find(function(x){return x.id===aid;})||DB.staff.find(function(x){return x.id===aid;});if(!a)return;
+    var td=today();if(DB.attendance.find(function(r){return r.agentId===aid&&r.date===td;}))return;
+    var now=new Date();
+    DB.attendance.push({id:uid(),agentId:aid,agentName:a.name,date:td,checkIn:fmtHM(now),checkInAt:now.toISOString(),checkOut:null,duration:null,status:'present',leaveReason:''});
+    saveDB();render();
+  });});
+  all('[data-checkout]',function(b){b.addEventListener('click',function(){
+    var aid=b.dataset.checkout;var td=today();
+    var rec=DB.attendance.find(function(r){return r.agentId===aid&&r.date===td&&r.checkIn&&!r.checkOut;});if(!rec)return;
+    var now=new Date();var mins=Math.floor((now-new Date(rec.checkInAt))/60000);
+    rec.checkOut=fmtHM(now);rec.duration=mins;saveDB();render();
+  });});
+  all('[data-leave]',function(b){b.addEventListener('click',function(){
+    var aid=b.dataset.leave;
+    var a=DB.agents.find(function(x){return x.id===aid;})||DB.staff.find(function(x){return x.id===aid;});if(!a)return;
+    var reason=prompt('Leave reason for '+a.name+':');if(reason===null)return;
+    var td=today();var rec=DB.attendance.find(function(r){return r.agentId===aid&&r.date===td;});
+    if(rec){rec.status='leave';rec.leaveReason=reason||'Leave';}
+    else DB.attendance.push({id:uid(),agentId:aid,agentName:a.name,date:td,checkIn:null,checkOut:null,duration:null,status:'leave',leaveReason:reason||'Leave'});
+    saveDB();render();
+  });});
+
+  /* ATTENDANCE ADMIN FILTERS */
+  function afBind(id,key){var el=document.getElementById(id);if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',function(){S[key]=el.value;render();});}
+  afBind('af-agent','afAgent');afBind('af-date','afDate');afBind('af-status','afStatus');
+  on('af-clear','click',function(){S.afAgent='';S.afDate='';S.afStatus='';render();});
+  all('[data-del-att]',function(b){b.addEventListener('click',function(){if(confirm('Delete record?')){DB.attendance=DB.attendance.filter(function(a){return a.id!==b.dataset.delAtt;});saveDB();render();}});});
+  on('export-att','click',function(){
+    var cols=['agentName','date','status','checkIn','checkOut','duration','leaveReason'];
+    var rows=[cols.join(',')].concat(DB.attendance.map(function(r){return cols.map(function(c){return '"'+String(r[c]||'').replace(/"/g,'""')+'"';}).join(',');}));
+    dl(rows.join('\n'),'text/csv','attendance-'+today()+'.csv');
+  });
+
+  /* SHIFTS */
+  on('add-shift-btn','click',function(){S.modal={type:'addShift'};render();});
+  all('[data-del-shift]',function(b){b.addEventListener('click',function(){DB.shifts=DB.shifts.filter(function(s){return s.id!==b.dataset.delShift;});saveDB();render();});});
+  /* AGENTS */
+  on('add-agent-btn','click',function(){S.modal={type:'addAgent'};render();});
+  all('[data-del-agent]',function(b){b.addEventListener('click',function(){DB.agents=DB.agents.filter(function(a){return a.id!==b.dataset.delAgent;});saveDB();render();});});
+  /* STAFF */
+  on('add-staff-btn','click',function(){S.modal={type:'addStaff'};render();});
+  all('[data-del-staff]',function(b){b.addEventListener('click',function(){if(confirm('Remove staff member?')){DB.staff=DB.staff.filter(function(m){return m.id!==b.dataset.delStaff;});saveDB();render();}});});
+  all('[data-edit-staff]',function(b){b.addEventListener('click',function(){var m=DB.staff.find(function(x){return x.id===b.dataset.editStaff;});if(m){S.modal={type:'editStaff',staff:Object.assign({},m)};render();}});});
+  /* PAY METHODS */
+  on('add-pm-btn','click',function(){S.modal={type:'addPM'};render();});
+  all('[data-del-pm]',function(b){b.addEventListener('click',function(){DB.payMethods=DB.payMethods.filter(function(m){return m.id!==b.dataset.delPm;});saveDB();render();});});
+  all('[data-add-tag]',function(b){b.addEventListener('click',function(){var mid=b.dataset.addTag;var el=document.getElementById('new-tag-'+mid);if(!el||!el.value.trim())return;var m=DB.payMethods.find(function(x){return x.id===mid;});if(!m)return;m.tags.push({id:uid(),tag:el.value.trim()});saveDB();render();});});
+  all('[data-del-tag]',function(b){b.addEventListener('click',function(){var p=b.dataset.delTag.split('__');var m=DB.payMethods.find(function(x){return x.id===p[0];});if(!m)return;m.tags=m.tags.filter(function(t){return t.id!==p[1];});saveDB();render();});});
+  /* PAGES */
+  on('add-page-btn','click',function(){var v=document.getElementById('new-page-name').value.trim();if(!v)return;DB.pageNames.push({id:uid(),name:v});saveDB();render();});
+  all('[data-del-page]',function(b){b.addEventListener('click',function(){DB.pageNames=DB.pageNames.filter(function(p){return p.id!==b.dataset.delPage;});saveDB();render();});});
+  /* VENDORS */
+  on('add-vendor-btn','click',function(){S.modal={type:'addVendor'};render();});
+  all('[data-del-vendor]',function(b){b.addEventListener('click',function(){DB.vendors=DB.vendors.filter(function(v){return v.id!==b.dataset.delVendor;});saveDB();render();});});
+  bindVPM();
+  /* EXPENSES */
+  on('add-exp-btn','click',function(){
+    var date=document.getElementById('exp-date').value;var cat=document.getElementById('exp-cat').value;
+    var desc=document.getElementById('exp-desc').value.trim();var amt=document.getElementById('exp-amt').value;
+    if(!cat||!desc||!amt){alert('All expense fields are required.');return;}
+    DB.expenses.push({id:uid(),date:date||today(),category:cat,description:desc,amount:parseFloat(amt)});saveDB();render();
+  });
+  all('[data-del-exp]',function(b){b.addEventListener('click',function(){DB.expenses=DB.expenses.filter(function(e){return e.id!==b.dataset.delExp;});saveDB();render();});});
+  on('add-excat-btn','click',function(){var v=document.getElementById('new-excat').value.trim();if(!v)return;DB.expCats.push({id:uid(),name:v});saveDB();render();});
+  all('[data-del-excat]',function(b){b.addEventListener('click',function(){DB.expCats=DB.expCats.filter(function(c){return c.id!==b.dataset.delExcat;});saveDB();render();});});
+  /* SUPABASE */
+  on('sb-save','click',function(){DB.supabase.url=(document.getElementById('sb-url').value||'').trim();DB.supabase.anonKey=(document.getElementById('sb-key').value||'').trim();DB.supabase.enabled=!!(DB.supabase.url&&DB.supabase.anonKey);saveDB();render();});
+  on('sb-disable','click',function(){DB.supabase.enabled=false;saveDB();render();});
+  on('sb-test','click',function(){
+    var url=(document.getElementById('sb-url').value||'').trim();var key=(document.getElementById('sb-key').value||'').trim();var msg=document.getElementById('sb-msg');
+    if(!url||!key){if(msg)msg.textContent='Enter URL and key first.';return;}if(msg)msg.textContent='Testing...';
+    fetch(url+'/rest/v1/',{headers:{'apikey':key,'Authorization':'Bearer '+key}}).then(function(r){if(msg)msg.textContent=r.ok?'✓ Connected!':'Check credentials (status '+r.status+')';}).catch(function(e){if(msg)msg.textContent='✗ '+e.message;});
+  });
+  /* BACKUP */
+  on('export-json','click',function(){dl(JSON.stringify(DB,null,2),'application/json','gamecrm-backup-'+today()+'.json');});
+  on('export-csv','click',function(){
+    var allE=DB.entries.slice();DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(e);});});
+    var cols=['id','type','date','shift','agent','playerName','gameId','gameName','deposit','recharge','promo','fpAmount','rdCredits','cashoutPaid'];
+    var rows=[cols.join(',')].concat(allE.map(function(e){return cols.map(function(c){return '"'+String(e[c]||'').replace(/"/g,'""')+'"';}).join(',');}));
+    dl(rows.join('\n'),'text/csv','entries-'+today()+'.csv');
+  });
+  on('export-csv-exp','click',function(){
+    var cols=['id','date','category','description','amount'];
+    var rows=[cols.join(',')].concat(DB.expenses.map(function(e){return cols.map(function(c){return '"'+String(e[c]||'').replace(/"/g,'""')+'"';}).join(',');}));
+    dl(rows.join('\n'),'text/csv','expenses-'+today()+'.csv');
+  });
+  var rfile=document.getElementById('restore-file');var rbtn=document.getElementById('restore-btn');var rname=document.getElementById('restore-name');
+  if(rfile)rfile.addEventListener('change',function(){if(rfile.files[0]){if(rname)rname.textContent=rfile.files[0].name;if(rbtn)rbtn.disabled=false;}});
+  if(rbtn)rbtn.addEventListener('click',function(){var f=rfile&&rfile.files&&rfile.files[0];if(!f)return;if(!confirm('Overwrite ALL data?'))return;var r=new FileReader();r.onload=function(ev){try{Object.assign(DB,JSON.parse(ev.target.result));saveDB();render();alert('Restored!');}catch(e){alert('Invalid file.');}};r.readAsText(f);});
+
+  /* MODAL CLOSE */
+  on('m-close','click',function(){S.modal=null;render();});
+  on('m-cancel','click',function(){S.modal=null;render();});
+  on('moverlay','click',function(e){if(e.target.id==='moverlay'){S.modal=null;render();}});
+
+  /* MODAL SAVES */
+  on('m-save-shift','click',function(){var n=document.getElementById('ms-name').value.trim();if(!n){alert('Name required');return;}DB.shifts.push({id:uid(),name:n,start:document.getElementById('ms-start').value,end:document.getElementById('ms-end').value});saveDB();S.modal=null;render();});
+  on('m-save-agent','click',function(){var n=document.getElementById('ma-name').value.trim();if(!n){alert('Name required');return;}DB.agents.push({id:uid(),name:n,role:document.getElementById('ma-role').value.trim()||'Agent'});saveDB();S.modal=null;render();});
+  on('m-save-game','click',function(){
+    var n=document.getElementById('mg-name').value.trim();if(!n){alert('Game name required');return;}
+    DB.games.push({id:uid(),name:n,backendLoaded:parseFloat(document.getElementById('mg-bal').value)||0,vendorId:document.getElementById('mg-vendor').value||'',backendLink:document.getElementById('mg-blink').value||'',playerLink:document.getElementById('mg-plink').value||'',username:document.getElementById('mg-user').value||'',password:document.getElementById('mg-pass').value||'',pricePer1k:parseFloat(document.getElementById('mg-price').value)||10,reloadHistory:[]});
+    saveDB();S.modal=null;render();
+  });
+  on('m-save-pm','click',function(){var n=document.getElementById('mpm-name').value.trim();if(!n){alert('Name required');return;}DB.payMethods.push({id:uid(),name:n,tags:[]});saveDB();S.modal=null;render();});
+  on('m-save-vendor','click',function(){var n=document.getElementById('mv-name').value.trim();if(!n){alert('Name required');return;}DB.vendors.push({id:uid(),name:n,payMethodId:document.getElementById('mv-pm').value||'',gatewayFee:parseFloat(document.getElementById('mv-comm').value)||0,payTag:document.getElementById('mv-tag').value||''});saveDB();S.modal=null;render();});
+  on('m-save-staff','click',function(){
+    var n=document.getElementById('sm-name').value.trim();var role=document.getElementById('sm-role').value;
+    if(!n){alert('Name required');return;}if(!role){alert('Role required');return;}
+    var perms=[];document.querySelectorAll('#pg-new .perm-item.on').forEach(function(el){perms.push(el.dataset.perm);});
+    DB.staff.push({id:uid(),name:n,email:document.getElementById('sm-email').value.trim()||'',role:role,pin:document.getElementById('sm-pin').value||'',perms:perms});
+    saveDB();S.modal=null;render();
+  });
+  on('m-save-staff-edit','click',function(){
+    var btn=document.getElementById('m-save-staff-edit');var sid=btn?btn.dataset.sid:null;
+    var m=DB.staff.find(function(x){return x.id===sid;});if(!m)return;
+    m.name=document.getElementById('sm-name').value.trim()||m.name;m.email=document.getElementById('sm-email').value.trim()||'';m.role=document.getElementById('sm-role').value||m.role;
+    var np=document.getElementById('sm-pin').value;if(np)m.pin=np;
+    m.perms=[];document.querySelectorAll('#pg-edit .perm-item.on').forEach(function(el){m.perms.push(el.dataset.perm);});
+    saveDB();S.modal=null;render();
+  });
+
+  /* PERM TOGGLES */
+  all('#pg-new .perm-item,#pg-edit .perm-item',function(el){el.addEventListener('click',function(){el.classList.toggle('on');var cb=el.querySelector('.perm-cb');if(cb)cb.textContent=el.classList.contains('on')?'✓':'';});});
+  on('sm-role','change',function(){var role=document.getElementById('sm-role').value;var defs=ROLE_DEF[role]||[];var grid=document.getElementById('pg-new')||document.getElementById('pg-edit');if(grid){grid.querySelectorAll('.perm-item').forEach(function(el){var on=defs.indexOf(el.dataset.perm)>=0;el.classList.toggle('on',on);var cb=el.querySelector('.perm-cb');if(cb)cb.textContent=on?'✓':'';});}});
+  on('perms-all','click',function(){document.querySelectorAll('#pg-edit .perm-item').forEach(function(el){el.classList.add('on');var cb=el.querySelector('.perm-cb');if(cb)cb.textContent='✓';});});
+  on('perms-none','click',function(){document.querySelectorAll('#pg-edit .perm-item').forEach(function(el){el.classList.remove('on');var cb=el.querySelector('.perm-cb');if(cb)cb.textContent='';});});
+  on('perms-role','click',function(){var role=document.getElementById('sm-role')&&document.getElementById('sm-role').value;var defs=ROLE_DEF[role]||[];document.querySelectorAll('#pg-edit .perm-item').forEach(function(el){var on=defs.indexOf(el.dataset.perm)>=0;el.classList.toggle('on',on);var cb=el.querySelector('.perm-cb');if(cb)cb.textContent=on?'✓':'';});});
+
+  /* CLOSE SHIFT BALANCE INPUTS — no re-render! */
+  all('[data-csg]',function(inp){inp.addEventListener('input',function(){
+    var gid=inp.dataset.csg;var calc=parseFloat(inp.dataset.calc);var val=inp.value;
+    if(!S.modal.balances)S.modal.balances={};S.modal.balances[gid]=val;
+    var diff=val!==''?parseFloat(val)-calc:null;var ok=diff!==null&&Math.abs(diff)<0.01;
+    inp.style.borderColor=val===''?'var(--border2)':ok?'var(--accent3)':'var(--danger)';
+    var de=document.getElementById('csd-'+gid);if(de){de.style.color=ok?'var(--accent3)':'var(--danger)';de.textContent=diff!==null?(ok?'✓ Matches':'⚠ Difference: '+fmt$(Math.abs(diff))):'';};
+  });});
+  on('m-confirm-close','click',function(){
+    var k=shiftKPIs();var label='Shift '+(DB.closedShifts.length+1)+' — '+today();
+    DB.closedShifts.push({id:uid(),label:label,date:today(),closedAt:new Date().toISOString(),entries:DB.entries.slice(),summary:{paidCount:k.paidCount,totalR:k.totalR,totalDeposit:k.totalDeposit,totalFP:k.totalFP,totalCashout:k.totalCashout,newPlayers:k.newPlayers}});
+    S.shiftReport={rows:[{label:'Shift',val:label},{label:'Paid Recharges',val:k.paidCount},{label:'Total Recharge',val:fmt$(k.totalR)},{label:'Total Deposit',val:fmt$(k.totalDeposit)},{label:'Freeplay Given',val:fmt$(k.totalFP)},{label:'Cashouts Paid',val:fmt$(k.totalCashout)},{label:'New Players',val:k.newPlayers},{label:'Duration',val:Math.round((Date.now()-new Date(DB.shiftStart).getTime())/60000)+' min'}]};
+    S.modal=null;S.page='closed';saveDB();render();
+  });
+
+  /* EDIT ENTRY SAVE */
+  on('m-save-entry','click',function(){
+    var btn=document.getElementById('m-save-entry');var eid=btn.dataset.eid;var etype=btn.dataset.etype;
+    var e=DB.entries.find(function(x){return x.id===eid;});if(!e)return;
+    var g=function(id){return(document.getElementById(id)||{}).value||'';};
+    var upd=Object.assign({},e,{date:g('em-date'),shift:g('em-shift'),agent:g('em-agent')});
+    if(etype==='paid'){Object.assign(upd,{playerName:g('em-pname'),playerUrl:g('em-purl'),deposit:g('em-dep'),recharge:g('em-rec'),payMethodId:g('em-pm'),payTagId:g('em-ptag'),custTag:g('em-ctag'),gameId:g('em-gid'),gameName:g('em-gname'),salesName:g('em-sname'),legalName:g('em-lname'),contact:g('em-contact'),email:g('em-email')});var d=parseFloat(upd.deposit)||0,r=parseFloat(upd.recharge)||0;upd.promo=(r-d).toFixed(2);upd.promoP=d>0?((r-d)/d*100).toFixed(1)+'%':'0%';upd.isNewPlayer=!!(upd.salesName||upd.legalName||upd.contact||upd.email);}
+    else if(etype==='freeplay'){Object.assign(upd,{playerName:g('em-pname'),fpAmount:g('em-fpamt'),gameId:g('em-gid'),gameName:g('em-gname')});}
+    else if(etype==='redeem'){Object.assign(upd,{gameId:g('em-gid'),gameName:g('em-gname'),rdCredits:g('em-cred'),cashoutPaid:g('em-cash')});}
+    DB.entries=DB.entries.map(function(x){return x.id===eid?upd:x;});saveDB();S.modal=null;render();
+  });
+
+  /* PAID FORM BINDS */
+  var pf=S.pf;
+  function li(id,key,form){var el=document.getElementById(id);if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',function(){form[key]=el.value;});}
+  li('pf-date','date',pf);li('pf-shift','shift',pf);li('pf-agent','agent',pf);li('pf-pname','playerName',pf);
+  var purlEl=document.getElementById('pf-purl');if(purlEl)purlEl.addEventListener('blur',function(){pf.playerUrl=purlEl.value;render();});
+  /* PROMO LIVE CALC — no re-render */
+  var depEl=document.getElementById('pf-dep');var recEl=document.getElementById('pf-rec');
+  function calcPromo(){
+    var d=parseFloat(depEl?depEl.value:0)||0;var r=parseFloat(recEl?recEl.value:0)||0;
+    var pr=r-d;var prP=d>0?((pr/d)*100).toFixed(1)+'%':'0%';
+    pf.deposit=depEl?depEl.value:'';pf.recharge=recEl?recEl.value:'';pf.promo=pr.toFixed(2);pf.promoP=prP;
+    var pe=document.getElementById('pf-promo');var ppe=document.getElementById('pf-promoP');
+    if(pe)pe.value=pr.toFixed(2);if(ppe)ppe.value=prP;
+  }
+  if(depEl)depEl.addEventListener('input',calcPromo);if(recEl)recEl.addEventListener('input',calcPromo);
+  var pmEl=document.getElementById('pf-pm');if(pmEl)pmEl.addEventListener('change',function(){pf.payMethodId=pmEl.value;pf.payTagId='';render();});
+  li('pf-ptag','payTagId',pf);li('pf-ctag','custTag',pf);li('pf-gid','gameId',pf);li('pf-gname','gameName',pf);li('pf-page','pageName',pf);
+  var huntEl=document.getElementById('pf-hunt');if(huntEl)huntEl.addEventListener('input',function(){pf.huntingProfile=huntEl.value;});
+  li('pf-sname','salesName',pf);li('pf-lname','legalName',pf);li('pf-contact','contact',pf);li('pf-email','email',pf);
+  /* Deposit on page — preserve scroll */
+  function dpClick(val){return function(){pf.depositOnPage=val;var cs=document.querySelector('.content-scroll');var st=cs?cs.scrollTop:0;render();var cs2=document.querySelector('.content-scroll');if(cs2)cs2.scrollTop=st;};}
+  on('dp-yes','click',dpClick('Yes'));on('dp-no','click',dpClick('No'));
+  on('pf-clear','click',function(){S.pf=newPF();render();});
+  on('pf-submit','click',function(){
+    var f=S.pf;
+    if(f.playerUrl&&!isUrl(f.playerUrl)){alert('Enter a valid Facebook URL.');return;}
+    var req=[['agent','Agent'],['playerName','Player Name'],['playerUrl','Player URL'],['deposit','Deposit'],['recharge','Recharge'],['payMethodId','Payment Method'],['payTagId','Payment Tag'],['custTag','Customer Tag'],['gameId','Game ID'],['gameName','Game Name'],['depositOnPage','Deposit on Page']];
+    for(var i=0;i<req.length;i++){if(!f[req[i][0]]){alert(req[i][1]+' is required.');return;}}
+    if(f.depositOnPage==='Yes'&&!f.pageName){alert('Page Name required.');return;}
+    if(f.depositOnPage==='No'&&!f.huntingProfile){alert('Hunting Profile required.');return;}
+    var payTag=f.payTagId?tagsFor(f.payMethodId).find(function(t){return t.id===f.payTagId;}):null;
+    var hasNew=!!(f.salesName||f.legalName||f.contact||f.email);
+    var d=parseFloat(f.deposit)||0,r=parseFloat(f.recharge)||0;
+    DB.entries.push({id:uid(),type:'paid',isNewPlayer:hasNew,date:f.date,shift:f.shift,agent:f.agent,playerName:f.playerName,playerUrl:f.playerUrl,deposit:f.deposit,recharge:f.recharge,promo:(r-d).toFixed(2),promoP:d>0?((r-d)/d*100).toFixed(1)+'%':'0%',payMethodId:f.payMethodId,payTagId:f.payTagId,payTagLabel:payTag?payTag.tag:'',custTag:f.custTag,gameId:f.gameId,gameName:f.gameName,depositOnPage:f.depositOnPage,pageName:f.pageName,huntingProfile:f.huntingProfile,salesName:f.salesName,legalName:f.legalName,contact:f.contact,email:f.email});
+    S.pf=newPF();saveDB();render();
+  });
+
+  /* FREEPLAY FORM */
+  var ff=S.ff;
+  li('ff-date','date',ff);li('ff-shift','shift',ff);li('ff-agent','agent',ff);li('ff-pname','playerName',ff);li('ff-amt','fpAmount',ff);li('ff-gname','gameName',ff);li('ff-gid','gameId',ff);li('ff-sname','salesName',ff);li('ff-lname','legalName',ff);li('ff-contact','contact',ff);li('ff-email','email',ff);
+  var fpurl=document.getElementById('ff-purl');if(fpurl)fpurl.addEventListener('blur',function(){ff.playerUrl=fpurl.value;render();});
+  on('ff-clear','click',function(){S.ff=newFF();render();});
+  on('ff-submit','click',function(){
+    var f=S.ff;var req=[['agent','Agent'],['playerName','Player Name'],['fpAmount','Freeplay Amount'],['gameId','Game ID'],['gameName','Game Name']];
+    for(var i=0;i<req.length;i++){if(!f[req[i][0]]){alert(req[i][1]+' is required.');return;}}
+    var hasInfo=!!(f.salesName||f.legalName||f.contact||f.email);
+    var hasPaid=DB.entries.some(function(e){return e.type==='paid'&&(e.playerName||'').toLowerCase()===(f.playerName||'').toLowerCase();});
+    DB.entries.push({id:uid(),type:'freeplay',isNewPlayer:hasInfo&&hasPaid,date:f.date,shift:f.shift,agent:f.agent,playerName:f.playerName,playerUrl:f.playerUrl,fpAmount:f.fpAmount,gameId:f.gameId,gameName:f.gameName,salesName:f.salesName,legalName:f.legalName,contact:f.contact,email:f.email});
+    S.ff=newFF();saveDB();render();
+  });
+
+  /* REDEEM FORM */
+  var rf=S.rf;
+  var gidEl=document.getElementById('rf-gid');
+  if(gidEl){gidEl.addEventListener('input',function(){rf.gameId=gidEl.value;});gidEl.addEventListener('blur',function(){rf.gameId=gidEl.value;render();});}
+  li('rf-shift','shift',rf);li('rf-agent','agent',rf);li('rf-date','date',rf);li('rf-gname','gameName',rf);
+  var credEl=document.getElementById('rf-cred');if(credEl)credEl.addEventListener('input',function(){rf.rdCredits=credEl.value;});
+  var cashEl=document.getElementById('rf-cash');if(cashEl)cashEl.addEventListener('input',function(){rf.cashoutPaid=cashEl.value;});
+  on('rf-clear','click',function(){S.rf=newRF();render();});
+  on('rf-submit','click',function(){
+    var gidV=gidEl?gidEl.value:rf.gameId;var gnV=(document.getElementById('rf-gname')||{}).value||rf.gameName;
+    var crV=credEl?credEl.value:rf.rdCredits;var caV=cashEl?cashEl.value:rf.cashoutPaid;
+    var agV=(document.getElementById('rf-agent')||{}).value||rf.agent;
+    var shV=(document.getElementById('rf-shift')||{}).value||rf.shift;
+    var dtV=(document.getElementById('rf-date')||{}).value||rf.date;
+    if(!dtV||!shV||!agV||!gidV||!gnV||!crV||!caV){alert('All fields are required.');return;}
+    var match=DB.entries.find(function(e){return e.type==='paid'&&e.gameId===gidV;});
+    DB.entries.push({id:uid(),type:'redeem',date:dtV,shift:shV,agent:agV,gameId:gidV,gameName:gnV,playerName:match?match.playerName:'',rdCredits:crV,cashoutPaid:caV});
+    S.rf=newRF();saveDB();render();
+  });
+}
+
+render();
+</script>
+</body>
+</html>
