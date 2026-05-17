@@ -172,7 +172,14 @@ var DEF={
     {id:'g2',name:'Juwa',backendLoaded:8000,pricePer1k:10,backendLink:'',playerLink:'',username:'',password:'',vendorId:'',reloadHistory:[]},
     {id:'g3',name:'Orion Stars',backendLoaded:6000,pricePer1k:10,backendLink:'',playerLink:'',username:'',password:'',vendorId:'',reloadHistory:[]},
   ],
-  vendors:[{id:'v1',name:'FastPay Co',payMethodId:'',gatewayFee:2.5,payTag:'$FastPay',notes:''}],
+  // payVendors: payment processors. Each has per-method fees array.
+  // structure: {id, name, notes, fees:[{payMethodId, fee, payTag}]}
+  payVendors:[{id:'pv1',name:'FastPay Co',notes:'',fees:[{id:'pf1',payMethodId:'pm1',fee:20,payTag:'$CashTag1'},{id:'pf2',payMethodId:'pm2',fee:30,payTag:'zelle@shop.com'}]}],
+  // gameVendors: game platform suppliers
+  gameVendors:[{id:'gv1',name:'Juwa Vendor',notes:''},{id:'gv2',name:'Orion Vendor',notes:''}],
+  // legacy vendors kept for migration
+  vendors:[],
+  overrideCode:'1234',
   expCats:[{id:'ec1',name:'Payroll'},{id:'ec2',name:'Rent'},{id:'ec3',name:'Utilities'},{id:'ec4',name:'Marketing'},{id:'ec5',name:'Misc'}],
   expenses:[],entries:[],closedShifts:[],attendance:[],
   shiftStart:new Date().toISOString(),
@@ -187,8 +194,66 @@ if(!DB.supabase)DB.supabase={url:'https://eioindyucvbkvybbevmc.supabase.co',anon
 if(!DB.supabase.url)DB.supabase={url:'https://eioindyucvbkvybbevmc.supabase.co',anonKey:'sb_publishable_VPBm_1F6jl7dBMHJi1jokA_UOdcW6jZ',enabled:true};
 if(!DB.expenses)DB.expenses=[];
 if(!DB.expCats)DB.expCats=DEF.expCats;
-DB.games.forEach(function(g){if(!g.vendorId)g.vendorId='';if(!g.reloadHistory)g.reloadHistory=[];});
-DB.vendors.forEach(function(v){if(v.commission!==undefined&&v.gatewayFee===undefined){v.gatewayFee=v.commission;delete v.commission;}if(v.gatewayFee===undefined)v.gatewayFee=0;});
+if(!DB.payVendors)DB.payVendors=DEF.payVendors;
+if(!DB.gameVendors)DB.gameVendors=DEF.gameVendors;
+if(!DB.overrideCode)DB.overrideCode='1234';
+// migrate old flat vendors into payVendors if any
+if(DB.vendors&&DB.vendors.length){
+  DB.vendors.forEach(function(v){
+    if(!DB.payVendors.find(function(x){return x.id===v.id;})){
+      DB.payVendors.push({id:v.id,name:v.name,notes:v.notes||'',fees:[{id:uid(),payMethodId:v.payMethodId||'',fee:parseFloat(v.gatewayFee||0),payTag:v.payTag||''}]});
+    }
+  });
+  DB.vendors=[];
+}
+DB.games.forEach(function(g){if(!g.gameVendorId)g.gameVendorId=g.vendorId||'';if(!g.reloadHistory)g.reloadHistory=[];});
+
+// ─── ONLINE STATE ───────────────────────────
+var IS_ONLINE=navigator.onLine;
+window.addEventListener('online',function(){IS_ONLINE=true;render();});
+window.addEventListener('offline',function(){IS_ONLINE=false;render();});
+
+// ─── AUTO SYNC ──────────────────────────────
+var _syncQueue=[];var _syncing=false;
+function queueSync(record,table){
+  if(!IS_ONLINE){showOfflineAlert();return false;}
+  _syncQueue.push({record:record,table:table});
+  if(!_syncing)flushSync();
+  return true;
+}
+function showOfflineAlert(){
+  var existing=document.getElementById('offline-banner');
+  if(!existing){
+    var b=document.createElement('div');
+    b.id='offline-banner';
+    b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#f43f5e;color:#fff;text-align:center;padding:10px 20px;font-size:13px;font-weight:600;font-family:var(--font)';
+    b.textContent='No internet connection — changes are blocked until you reconnect.';
+    document.body.appendChild(b);
+    setTimeout(function(){var el=document.getElementById('offline-banner');if(el)el.remove();},4000);
+  }
+}
+function flushSync(){
+  if(!_syncQueue.length||_syncing)return;
+  _syncing=true;
+  var item=_syncQueue.shift();
+  var sb=DB.supabase;
+  if(!sb.enabled||!sb.url||!sb.anonKey){_syncing=false;flushSync();return;}
+  var payload=[item.record];
+  fetch(sb.url+'/rest/v1/'+item.table,{
+    method:'POST',
+    headers:{'apikey':sb.anonKey,'Authorization':'Bearer '+sb.anonKey,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(payload)
+  }).then(function(){_syncing=false;flushSync();}).catch(function(){_syncing=false;_syncQueue.unshift(item);});
+}
+function syncEntry(e){
+  var row={id:e.id,type:e.type,date:e.date,shift:e.shift,shift_session:'Current',agent:e.agent||'',player_name:e.playerName||'',player_url:e.playerUrl||'',game_id:e.gameId||'',game_name:e.gameName||'',deposit:parseFloat(e.deposit||0),recharge:parseFloat(e.recharge||0),promo:parseFloat(e.promo||0),fp_amount:parseFloat(e.fpAmount||0),rd_credits:parseFloat(e.rdCredits||0),cashout_paid:parseFloat(e.cashoutPaid||0),is_new_player:!!e.isNewPlayer,cust_tag:e.custTag||'',pay_method_id:e.payMethodId||'',legal_name:e.legalName||'',contact:e.contact||'',email:e.email||''};
+  queueSync(row,'entries');
+}
+function syncAttendance(a){
+  var row={id:a.id,agent_id:a.agentId,agent_name:a.agentName,date:a.date,check_in:a.checkIn||null,check_out:a.checkOut||null,duration_mins:a.duration||null,status:a.status||'present',leave_reason:a.leaveReason||''};
+  queueSync(row,'attendance');
+}
+function checkOnline(){if(!IS_ONLINE){showOfflineAlert();return false;}return true;}
 
 function gameBal(gid){
   var g=DB.games.find(function(x){return x.id===gid;});if(!g)return 0;
@@ -244,15 +309,18 @@ function buildApp(){
 }
 
 function buildTopbar(){
-  return '<div class="topbar">'+
+  var offlineBanner=IS_ONLINE?'':'<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--danger);color:#fff;text-align:center;padding:8px 20px;font-size:12px;font-weight:600">&#9888; No internet — all changes are blocked. Reconnect to continue.</div>';
+  var onlineDot='<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:'+(IS_ONLINE?'var(--accent3)':'var(--danger)')+'"><div style="width:7px;height:7px;border-radius:50%;background:'+(IS_ONLINE?'var(--accent3)':'var(--danger)')+'"></div>'+(IS_ONLINE?'Online':'Offline')+'</div>';
+  return offlineBanner+'<div class="topbar">'+
     '<div class="logo">GAME<em>CRM</em></div>'+
     '<div style="display:flex;gap:4px">'+
       '<button class="nav-btn'+(S.page==='shift'?' active':'')+'" data-nav="shift">Agent Panel</button>'+
       '<button class="nav-btn'+(S.page==='admin'?' active':'')+'" data-nav="admin">Admin Dashboard</button>'+
     '</div>'+
-    '<div style="display:flex;align-items:center;gap:8px">'+
+    '<div style="display:flex;align-items:center;gap:12px">'+
+      onlineDot+
       '<div class="clock-pill"><strong>'+getShift()+'</strong>&nbsp;<span id="clk">'+fmtTime(new Date())+'</span></div>'+
-      (S.page==='shift'?'<button class="btn btn-danger btn-sm" id="btn-close-shift">&#x2297; Close Shift</button>':'')+
+      (S.page==='shift'?'<button class="btn btn-danger btn-sm" id="btn-close-shift"'+(IS_ONLINE?'':' disabled style="opacity:.4"')+'>&#x2297; Close Shift</button>':'')+
     '</div>'+
   '</div>';
 }
@@ -312,6 +380,22 @@ function buildPaidForm(){
   var pmOpts=DB.payMethods.map(function(m){return{value:m.id,label:m.name};});
   var pageDisabled=f.depositOnPage!=='Yes';
   var huntDisabled=f.depositOnPage==='Yes';
+  // Find gateway fee for selected method across payVendors
+  var feeInfo=null;
+  if(f.payMethodId){
+    DB.payVendors.forEach(function(pv){
+      var feeRow=pv.fees.find(function(fe){return fe.payMethodId===f.payMethodId;});
+      if(feeRow)feeInfo={vendor:pv.name,fee:feeRow.fee,tag:feeRow.payTag};
+    });
+  }
+  var feeHint=feeInfo?'<div style="margin-top:6px;padding:6px 10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:6px;font-size:11px;color:var(--warn)">Gateway fee via '+esc(feeInfo.vendor)+': <strong>'+feeInfo.fee+'%</strong></div>':'';
+  // Promo warning
+  var promoVal=parseFloat(f.promo||0);
+  var depositVal=parseFloat(f.deposit||0);
+  var promoPct=depositVal>0?(promoVal/depositVal)*100:0;
+  var promoWarn=promoPct>100?'<div style="margin-top:6px;padding:6px 10px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.3);border-radius:6px;font-size:11px;color:var(--danger)">&#9888; Promo exceeds 100% — manager approval required on submit.</div>':'';
+  // Game vendor opts
+  var gvOpts=DB.gameVendors.map(function(v){return{value:v.id,label:v.name};});
   return '<div class="fc">'+
     fcHead('Session Info','var(--accent)')+
     '<div class="fg c3">'+fld('Date',true,inp('pf-date',f.date,''))+fld('Shift',true,sel('pf-shift',f.shift,gOpts(shiftNames())))+fld('Agent',true,sel('pf-agent',f.agent,gOpts(agentNames())))+'</div>'+
@@ -324,12 +408,14 @@ function buildPaidForm(){
       fld('Promo ($)',false,'<input type="number" id="pf-promo" value="'+esc(f.promo)+'" placeholder="Auto" readonly '+roInputSt()+'>')+
       fld('Promo %',false,'<input type="text" id="pf-promoP" value="'+esc(f.promoP)+'" placeholder="Auto" readonly '+roInputSt()+'>')+
     '</div>'+
+    (promoWarn?'<div style="padding:0 16px 10px">'+promoWarn+'</div>':'')+
     fcHead('Payment','var(--warn)')+
     '<div class="fg c3">'+
       fld('Payment Method',true,sel('pf-pm',f.payMethodId,pmOpts))+
       fld('Payment Tag',true,f.payMethodId?sel('pf-ptag',f.payTagId,tagOpts,'-- Select Tag --'):'<select disabled><option>Select method first</option></select>')+
       fld('Customer Tag / Email',true,inp('pf-ctag',f.custTag,'@tag or email'))+
     '</div>'+
+    (feeHint?'<div style="padding:0 16px 10px">'+feeHint+'</div>':'')+
     fcHead('Game Info','var(--accent2)')+
     '<div class="fg c2">'+fld('Game ID',true,inp('pf-gid',f.gameId,'Unique player game ID'))+fld('Game Name',true,sel('pf-gname',f.gameName,gOpts(gameNames())))+'</div>'+
     fcHead('Deposit Channel','var(--accent3)')+
@@ -345,7 +431,7 @@ function buildPaidForm(){
     '</div>'+
     fcHead('New Player Info (optional — marks as new if filled)','var(--danger)')+
     '<div class="fg c4">'+fld('Sales Agent',false,sel('pf-sname',f.salesName,gOpts(agentNames()),'-- Select --'))+fld('Legal Name',false,inp('pf-lname',f.legalName,'Full legal name'))+fld('Contact #',false,inp('pf-contact',f.contact,'+1 555 000 0000','tel'))+fld('E-mail',false,inp('pf-email',f.email,'player@email.com','email'))+'</div>'+
-    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="pf-clear">Clear</button><button class="btn btn-primary btn-sm" id="pf-submit">+ Add Paid Recharge</button></div>'+
+    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="pf-clear">Clear</button><button class="btn btn-primary btn-sm" id="pf-submit"'+(IS_ONLINE?'':' disabled style="opacity:.4"')+'>+ Add Paid Recharge</button></div>'+
   '</div>';
 }
 
@@ -364,7 +450,7 @@ function buildFpForm(){
     '<div class="fg c2">'+fld('Game ID',true,inp('ff-gid',f.gameId,'Player game ID'))+fld('Game ID/Name',false,'<input type="text" value="'+esc(f.gameName)+'" readonly '+roInputSt()+'>')+'</div>'+
     fcHead('New Player Info (optional)','var(--danger)')+
     '<div class="fg c4">'+fld('Sales Agent',false,sel('ff-sname',f.salesName,gOpts(agentNames()),'-- Select --'))+fld('Legal Name',false,inp('ff-lname',f.legalName,'Full name'))+fld('Contact',false,inp('ff-contact',f.contact,'+1','tel'))+fld('Email',false,inp('ff-email',f.email,'email','email'))+'</div>'+
-    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="ff-clear">Clear</button><button class="btn btn-primary btn-sm" id="ff-submit">+ Add Freeplay</button></div>'+
+    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="ff-clear">Clear</button><button class="btn btn-primary btn-sm" id="ff-submit"'+(IS_ONLINE?'':' disabled style="opacity:.4"')+'>+ Add Freeplay</button></div>'+
   '</div>';
 }
 
@@ -388,7 +474,7 @@ function buildRdForm(){
     '<div class="fg c2" style="padding-top:0">'+fld('Game ID',true,inp('rf-gid',f.gameId,'Enter full player game ID'))+fld('Game Name',true,sel('rf-gname',f.gameName,gOpts(gameNames()),'-- Select --'))+'</div>'+
     matchHtml+
     '<div class="fg c2" style="padding-top:0">'+fld('Redeem Credits',true,numinp('rf-cred',f.rdCredits,'Credits removed from game'))+fld('Cashout Paid ($)',true,numinp('rf-cash',f.cashoutPaid,'Winnings paid'))+'</div>'+
-    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="rf-clear">Clear</button><button class="btn btn-danger btn-sm" id="rf-submit">+ Add Redeem</button></div>'+
+    '<div class="sub-bar"><button class="btn btn-ghost btn-sm" id="rf-clear">Clear</button><button class="btn btn-danger btn-sm" id="rf-submit"'+(IS_ONLINE?'':' disabled style="opacity:.4"')+'>+ Add Redeem</button></div>'+
   '</div>';
 }
 
@@ -508,6 +594,7 @@ function buildAdmin(){
     {id:'vendors',icon:'🏪',label:'Vendors'},
     {id:'expenses',icon:'💸',label:'Expenses'},
     {id:'supabase',icon:'🗄',label:'Supabase'},
+    {id:'settings',icon:'⚙',label:'Settings'},
     {id:'backup',icon:'💾',label:'Backup & Export'},
   ];
   var sb=sections.map(function(s){return '<div class="asb-item'+(S.adminSection===s.id?' active':'')+'" data-asec="'+s.id+'"><span style="font-size:14px">'+s.icon+'</span>'+s.label+'</div>';}).join('');
@@ -526,6 +613,7 @@ function buildAdmin(){
     case 'vendors':content=buildAVendors();break;
     case 'expenses':content=buildAExp();break;
     case 'supabase':content=buildSupabase();break;
+    case 'settings':content=buildSettings();break;
     case 'backup':content=buildBackup();break;
   }
   return '<div class="admin-layout"><div class="admin-sidebar"><div class="asb-sec">Menu</div>'+sb+'</div><div class="admin-main">'+content+'</div></div>';
@@ -854,13 +942,13 @@ function buildAStaff(){
 function buildAGames(){
   var IST=inpStyle;
   var rows=DB.games.map(function(g){
-    var vendor=DB.vendors.find(function(v){return v.id===g.vendorId;});
+    var vendor=DB.gameVendors.find(function(v){return v.id===g.gameVendorId;});
     var bal=gameBal(g.id);
     if(S.editGameId===g.id){
-      var vOpts=DB.vendors.map(function(v){return{value:v.id,label:v.name};});
+      var vOpts=DB.gameVendors.map(function(v){return{value:v.id,label:v.name};});
       return '<tr style="background:rgba(0,229,255,.04)">'+
         '<td><input id="ge-name" value="'+esc(g.name)+'" '+IST('130px')+'></td>'+
-        '<td>'+sel('ge-vendor',g.vendorId,vOpts,'-- None --')+'</td>'+
+        '<td>'+sel('ge-vendor',g.gameVendorId,vOpts,'-- None --')+'</td>'+
         '<td><input type="number" id="ge-bal" value="'+esc(g.backendLoaded)+'" step="0.01" '+IST('100px')+'></td>'+
         '<td style="color:'+(bal<0?'var(--danger)':'var(--accent3)')+';font-weight:700">'+fmt$(bal)+'</td>'+
         '<td><input type="number" id="ge-price" value="'+esc(g.pricePer1k)+'" step="0.01" '+IST('70px')+'></td>'+
@@ -931,34 +1019,92 @@ function buildAPages(){
 function buildAVendors(){
   var allE=DB.entries.slice();DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(e);});});
   var paid=allE.filter(function(e){return e.type==='paid';});
-  var cards=DB.vendors.map(function(v){
-    var vE=paid.filter(function(e){return e.vendorId===v.id;});
-    var dep=vE.reduce(function(s,e){return s+parseFloat(e.deposit||0);},0);
-    var fee=dep*(parseFloat(v.gatewayFee||0)/100);
-    var net=dep-fee;
-    var method=DB.payMethods.find(function(m){return m.id===v.payMethodId;});
-    var pmOpts=DB.payMethods.map(function(m){return{value:m.id,label:m.name};});
-    return '<div class="fc" style="margin-bottom:12px">'+
-      '<div class="fc-head" style="justify-content:space-between;padding-right:8px"><div style="display:flex;align-items:center;gap:8px"><div class="fc-dot" style="background:var(--accent2)"></div><div class="fc-title">'+esc(v.name)+'</div></div><button class="ibtn del" data-del-vendor="'+v.id+'">Del</button></div>'+
-      '<div class="fg c4" style="padding-bottom:0">'+
-        fld('Vendor Name',false,'<input type="text" value="'+esc(v.name)+'" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%" onchange="updV(\''+v.id+'\',\'name\',this.value)" autocomplete="off">')+
-        fld('Pay Method',false,sel('vpm-'+v.id,v.payMethodId,pmOpts))+
-        fld('Pay Tag',false,'<input type="text" value="'+esc(v.payTag||'')+'" placeholder="$tag / email" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%" onchange="updV(\''+v.id+'\',\'payTag\',this.value)" autocomplete="off">')+
-        fld('Gateway Fee (%)',false,'<input type="number" value="'+esc(v.gatewayFee||0)+'" step="0.1" placeholder="2.5" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%" onchange="updV(\''+v.id+'\',\'gatewayFee\',this.value)" autocomplete="off">')+
+
+  /* ── PAYMENT VENDORS ── */
+  var pvCards=DB.payVendors.map(function(pv){
+    var totalDep=0;var totalFee=0;
+    var feeRows=pv.fees.map(function(fe){
+      var method=DB.payMethods.find(function(m){return m.id===fe.payMethodId;});
+      var mName=method?method.name:'Unknown';
+      var mEntries=paid.filter(function(e){return e.payMethodId===fe.payMethodId;});
+      var dep=mEntries.reduce(function(s,e){return s+parseFloat(e.deposit||0);},0);
+      var feeAmt=dep*(parseFloat(fe.fee||0)/100);
+      totalDep+=dep;totalFee+=feeAmt;
+      var pmOpts=DB.payMethods.map(function(m){return{value:m.id,label:m.name};});
+      return '<div style="display:grid;grid-template-columns:1fr 1fr 100px 110px 110px 80px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'+
+        '<div style="font-size:12px;font-weight:600">'+esc(mName)+'</div>'+
+        '<div style="font-size:11px;color:var(--text3)">'+esc(fe.payTag||'—')+'</div>'+
+        '<div><input type="number" value="'+esc(fe.fee)+'" step="0.1" placeholder="%" style="background:var(--inp);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px;width:80px" onchange="updPVFee(\''+pv.id+'\',\''+fe.id+'\',\'fee\',this.value)" autocomplete="off">%</div>'+
+        '<div style="font-size:11px;color:var(--accent3)">'+fmt$(dep)+'</div>'+
+        '<div style="font-size:11px;color:var(--danger)">-'+fmt$(feeAmt)+'</div>'+
+        '<div><button class="ibtn del" data-del-pvfee="'+pv.id+'__'+fe.id+'">Del</button></div>'+
+      '</div>';
+    }).join('');
+    var methodSelectOpts=DB.payMethods.map(function(m){return{value:m.id,label:m.name};});
+    return '<div class="fc" style="margin-bottom:14px">'+
+      '<div class="fc-head" style="justify-content:space-between;padding-right:8px">'+
+        '<div style="display:flex;align-items:center;gap:8px"><div class="fc-dot" style="background:var(--accent2)"></div><div class="fc-title">'+esc(pv.name)+'</div></div>'+
+        '<button class="ibtn del" data-del-pv="'+pv.id+'">Del Vendor</button>'+
       '</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:12px 16px">'+
-        kCard('Total Received',fmt$(dep),vE.length+' txns','var(--accent3)')+
-        kCard('Gateway Fee ('+parseFloat(v.gatewayFee||0)+'%)','-'+fmt$(fee),'vendor deducts','var(--danger)')+
-        kCard('Net You Receive',fmt$(net),'after gateway fee','var(--warn)')+
-        kCard('Pay Method',method?method.name:'—',esc(v.payTag||'No tag'),'var(--text2)')+
+      '<div style="padding:10px 16px 0">'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 100px 110px 110px 80px;gap:8px;padding:4px 0;margin-bottom:4px">'+
+          '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:700">Method</div>'+
+          '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:700">Pay Tag</div>'+
+          '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:700">Fee %</div>'+
+          '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:700">Deposits</div>'+
+          '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:700">Fee Amount</div>'+
+          '<div></div>'+
+        '</div>'+
+        feeRows+
+        '<div style="display:flex;gap:8px;padding:10px 0;align-items:center">'+
+          '<select id="new-pvfee-pm-'+pv.id+'" style="background:var(--inp);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text);font-size:12px">'+
+            '<option value="">+ Add Payment Method</option>'+
+            DB.payMethods.map(function(m){return '<option value="'+m.id+'">'+esc(m.name)+'</option>';}).join('')+
+          '</select>'+
+          '<input type="number" id="new-pvfee-pct-'+pv.id+'" placeholder="Fee %" step="0.1" style="background:var(--inp);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text);font-size:12px;width:80px" autocomplete="off">'+
+          '<input type="text" id="new-pvfee-tag-'+pv.id+'" placeholder="Pay tag" style="background:var(--inp);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text);font-size:12px;width:130px" autocomplete="off">'+
+          '<button class="btn btn-warn btn-xs" data-add-pvfee="'+pv.id+'">+ Add</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="padding:8px 16px 10px;display:flex;gap:16px;border-top:1px solid var(--border)">'+
+        '<span style="font-size:12px;color:var(--text3)">Total deposits: <strong style="color:var(--accent3)">'+fmt$(totalDep)+'</strong></span>'+
+        '<span style="font-size:12px;color:var(--text3)">Total fees: <strong style="color:var(--danger)">-'+fmt$(totalFee)+'</strong></span>'+
+        '<span style="font-size:12px;color:var(--text3)">Net you receive: <strong style="color:var(--warn)">'+fmt$(totalDep-totalFee)+'</strong></span>'+
       '</div>'+
     '</div>';
   }).join('');
-  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Vendors</h2>'+cards+
-    '<div class="fc"><div class="sub-bar" style="background:transparent;border:none;justify-content:flex-start"><button class="btn btn-primary btn-sm" id="add-vendor-btn">+ Add Vendor</button></div></div>';
+
+  /* ── GAME VENDORS ── */
+  var gvCards=DB.gameVendors.map(function(gv){
+    var myGames=DB.games.filter(function(g){return g.gameVendorId===gv.id;});
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:8px">'+
+      '<div>'+
+        '<div style="font-weight:600">'+esc(gv.name)+'</div>'+
+        '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+myGames.map(function(g){return esc(g.name);}).join(', ')+(myGames.length===0?'No games assigned yet':'')+'</div>'+
+      '</div>'+
+      '<button class="ibtn del" data-del-gv="'+gv.id+'">Del</button>'+
+    '</div>';
+  }).join('');
+
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:4px">Vendors</h2>'+
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:16px">Payment vendors handle transaction processing. Game vendors supply game platforms. They can be the same company.</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start">'+
+      '<div>'+
+        '<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Payment Vendors</div>'+
+        pvCards+
+        '<div class="fc"><div class="sub-bar" style="background:transparent;border:none;justify-content:flex-start"><button class="btn btn-primary btn-sm" id="add-pv-btn">+ Add Payment Vendor</button></div></div>'+
+      '</div>'+
+      '<div>'+
+        '<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Game Vendors</div>'+
+        '<div class="fc" style="margin-bottom:12px"><div style="padding:14px 16px">'+gvCards+'<div style="display:flex;gap:8px;margin-top:8px"><input type="text" id="new-gv-name" placeholder="Game vendor name..." style="flex:1;background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px;font-family:var(--font)" autocomplete="off"><button class="btn btn-primary btn-xs" id="add-gv-btn">+ Add</button></div></div></div>'+
+      '</div>'+
+    '</div>';
 }
-window.updV=function(vid,field,val){var v=DB.vendors.find(function(x){return x.id===vid;});if(v){v[field]=val;saveDB();}};
-function bindVPM(){DB.vendors.forEach(function(v){var el=document.getElementById('vpm-'+v.id);if(el)el.addEventListener('change',function(){updV(v.id,'payMethodId',el.value);});});}
+window.updPVFee=function(pvid,feid,field,val){
+  var pv=DB.payVendors.find(function(x){return x.id===pvid;});if(!pv)return;
+  var fe=pv.fees.find(function(x){return x.id===feid;});if(!fe)return;
+  fe[field]=field==='fee'?parseFloat(val)||0:val;saveDB();
+};
 
 /* ───── ADMIN EXPENSES ───── */
 function buildAExp(){
@@ -1090,6 +1236,24 @@ function buildSupabase(){
     '</div></div>';
 }
 
+/* ───── SETTINGS ───── */
+function buildSettings(){
+  return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Settings</h2>'+
+    '<div class="fc" style="margin-bottom:16px">'+fcHead('Authorization Code','var(--warn)')+
+    '<div style="padding:16px">'+
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">This code is required when a recharge promo exceeds 100%. Only share with managers and admins.</div>'+
+      '<div style="display:flex;gap:10px;align-items:flex-end;max-width:400px">'+
+        '<div class="field" style="flex:1"><label>Current Code</label>'+
+          '<input type="password" id="settings-code" value="'+esc(DB.overrideCode)+'" autocomplete="new-password" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:8px 12px;color:var(--text);font-size:16px;width:100%;font-family:var(--mono);letter-spacing:4px">'+
+        '</div>'+
+        '<button class="btn btn-warn btn-sm" id="save-override-code">Save Code</button>'+
+      '</div>'+
+      '<div id="code-saved-msg" style="font-size:11px;color:var(--accent3);margin-top:6px;min-height:16px"></div>'+
+    '</div></div>'+
+    '<div class="fc">'+fcHead('General','var(--accent)')+
+    '<div style="padding:16px;font-size:12px;color:var(--text3)">More settings coming soon.</div></div>';
+}
+
 /* ───── BACKUP ───── */
 function buildBackup(){
   var tc=DB.entries.length;DB.closedShifts.forEach(function(sh){tc+=(sh.entries||[]).length;});
@@ -1124,6 +1288,7 @@ function buildBackup(){
 function buildModal(){
   var m=S.modal;
   if(m.type==='closeShift')return buildCloseModal();
+  if(m.type==='overrideCode')return buildOverrideModal();
   if(m.type==='addShift')return mWrap('Add Shift','','<div class="fg c3">'+fld('Name',true,inp('ms-name','','Morning'))+fld('Start',true,'<input type="time" id="ms-start" value="06:00" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%">')+fld('End',true,'<input type="time" id="ms-end" value="14:00" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%">')+'</div>','<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-shift">Save</button>',true);
   if(m.type==='addAgent')return mWrap('Add Agent','','<div class="fg c2">'+fld('Full Name',true,inp('ma-name','','Agent name'))+fld('Role',true,inp('ma-role','Agent','Agent / Senior Agent'))+'</div>','<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-agent">Save</button>',true);
   if(m.type==='addGame')return buildAddGameModal();
@@ -1140,10 +1305,10 @@ function mWrap(title,sub,body,footer,sm){
     '<div class="mbody">'+body+'</div><div class="mfooter">'+footer+'</div></div></div>';
 }
 function buildAddGameModal(){
-  var vOpts=DB.vendors.map(function(v){return{value:v.id,label:v.name};});
+  var vOpts=DB.gameVendors.map(function(v){return{value:v.id,label:v.name};});
   return mWrap('Add New Game','',
     '<div class="fg c2">'+fld('Game Name',true,inp('mg-name','','e.g. Fish Table'))+fld('Starting Balance ($)',true,numinp('mg-bal','','0.00'))+'</div>'+
-    '<div class="fg c2" style="padding-top:0">'+fld('Vendor',false,sel('mg-vendor','',vOpts,'-- No Vendor --'))+fld('Price / 1000 Credits',false,numinp('mg-price','10',''))+'</div>'+
+    '<div class="fg c2" style="padding-top:0">'+fld('Game Vendor',false,sel('mg-vendor','',vOpts,'-- No Vendor --'))+fld('Price / 1000 Credits',false,numinp('mg-price','10',''))+'</div>'+
     '<div class="fg c2" style="padding-top:0">'+fld('Backend Link',false,inp('mg-blink','','https://...','url'))+fld('Player Link',false,inp('mg-plink','','https://...','url'))+'</div>'+
     '<div class="fg c2" style="padding-top:0">'+fld('Username',false,inp('mg-user','','Login user'))+fld('Password',false,inp('mg-pass','','Login pass','password'))+'</div>',
     '<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-save-game">Save Game</button>');
@@ -1173,6 +1338,15 @@ function buildStaffModal(m){
   var savLabel=isEdit?'Save Changes':'Add Staff Member';
   var footer='<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-purple btn-sm" id="'+savId+'"'+(isEdit?' data-sid="'+m.id+'"':'')+'>'+savLabel+'</button>';
   return mWrap(isEdit?'Edit Staff Member':'Add Staff Member',isEdit?'ID: '+m.id:'Manager, Supervisor or Admin',body,footer);
+}
+function buildOverrideModal(){
+  return mWrap('Manager Approval Required','Promo exceeds 100% — enter the authorization code to proceed.',
+    '<div class="fg" style="padding-top:14px">'+
+      fld('Authorization Code',true,'<input type="password" id="override-code" placeholder="Enter code" style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:10px 14px;color:var(--text);font-size:16px;width:100%;font-family:var(--mono);letter-spacing:4px;text-align:center" autocomplete="off">')+
+      '<div id="override-err" style="color:var(--danger);font-size:11px;margin-top:4px;min-height:16px"></div>'+
+    '</div>',
+    '<button class="btn btn-ghost btn-sm" id="m-cancel">Cancel</button><button class="btn btn-primary btn-sm" id="m-confirm-override">Approve</button>',
+    true);
 }
 function buildCloseModal(){
   var rows=DB.games.map(function(g){
@@ -1252,7 +1426,7 @@ function bindAll(){
   all('[data-save-game]',function(b){b.addEventListener('click',function(){
     var g=DB.games.find(function(x){return x.id===b.dataset.saveGame;});if(!g)return;
     g.name=document.getElementById('ge-name').value||g.name;
-    g.vendorId=document.getElementById('ge-vendor').value||'';
+    g.gameVendorId=document.getElementById('ge-vendor').value||'';
     g.backendLoaded=parseFloat(document.getElementById('ge-bal').value)||g.backendLoaded;
     g.pricePer1k=parseFloat(document.getElementById('ge-price').value)||g.pricePer1k;
     g.backendLink=document.getElementById('ge-blink').value||'';
@@ -1348,10 +1522,36 @@ function bindAll(){
   /* PAGES */
   on('add-page-btn','click',function(){var v=document.getElementById('new-page-name').value.trim();if(!v)return;DB.pageNames.push({id:uid(),name:v});saveDB();render();});
   all('[data-del-page]',function(b){b.addEventListener('click',function(){DB.pageNames=DB.pageNames.filter(function(p){return p.id!==b.dataset.delPage;});saveDB();render();});});
-  /* VENDORS */
-  on('add-vendor-btn','click',function(){S.modal={type:'addVendor'};render();});
-  all('[data-del-vendor]',function(b){b.addEventListener('click',function(){DB.vendors=DB.vendors.filter(function(v){return v.id!==b.dataset.delVendor;});saveDB();render();});});
-  bindVPM();
+  /* VENDORS — payment vendors */
+  on('add-pv-btn','click',function(){
+    var name=prompt('Payment vendor name:');if(!name||!name.trim())return;
+    DB.payVendors.push({id:uid(),name:name.trim(),notes:'',fees:[]});saveDB();render();
+  });
+  all('[data-del-pv]',function(b){b.addEventListener('click',function(){if(confirm('Delete this vendor?')){DB.payVendors=DB.payVendors.filter(function(v){return v.id!==b.dataset.delPv;});saveDB();render();}});});
+  all('[data-del-pvfee]',function(b){b.addEventListener('click',function(){
+    var p=b.dataset.delPvfee.split('__');var pvid=p[0];var feid=p[1];
+    var pv=DB.payVendors.find(function(x){return x.id===pvid;});if(!pv)return;
+    pv.fees=pv.fees.filter(function(f){return f.id!==feid;});saveDB();render();
+  });});
+  all('[data-add-pvfee]',function(b){b.addEventListener('click',function(){
+    var pvid=b.dataset.addPvfee;
+    var pv=DB.payVendors.find(function(x){return x.id===pvid;});if(!pv)return;
+    var pmEl=document.getElementById('new-pvfee-pm-'+pvid);
+    var pctEl=document.getElementById('new-pvfee-pct-'+pvid);
+    var tagEl=document.getElementById('new-pvfee-tag-'+pvid);
+    var pmid=pmEl?pmEl.value:'';var pct=pctEl?parseFloat(pctEl.value)||0:0;var tag=tagEl?tagEl.value.trim():'';
+    if(!pmid){alert('Select a payment method.');return;}
+    pv.fees.push({id:uid(),payMethodId:pmid,fee:pct,payTag:tag});saveDB();render();
+  });});
+  /* VENDORS — game vendors */
+  on('add-gv-btn','click',function(){
+    var el=document.getElementById('new-gv-name');if(!el||!el.value.trim())return;
+    DB.gameVendors.push({id:uid(),name:el.value.trim(),notes:''});saveDB();render();
+  });
+  all('[data-del-gv]',function(b){b.addEventListener('click',function(){if(confirm('Delete this game vendor?')){DB.gameVendors=DB.gameVendors.filter(function(v){return v.id!==b.dataset.delGv;});saveDB();render();}});});
+  /* legacy stubs — no-op if old buttons somehow appear */
+  on('add-vendor-btn','click',function(){});
+  all('[data-del-vendor]',function(b){b.addEventListener('click',function(){});});
   /* EXPENSES */
   on('add-exp-btn','click',function(){
     var date=document.getElementById('exp-date').value;var cat=document.getElementById('exp-cat').value;
@@ -1362,6 +1562,13 @@ function bindAll(){
   all('[data-del-exp]',function(b){b.addEventListener('click',function(){DB.expenses=DB.expenses.filter(function(e){return e.id!==b.dataset.delExp;});saveDB();render();});});
   on('add-excat-btn','click',function(){var v=document.getElementById('new-excat').value.trim();if(!v)return;DB.expCats.push({id:uid(),name:v});saveDB();render();});
   all('[data-del-excat]',function(b){b.addEventListener('click',function(){DB.expCats=DB.expCats.filter(function(c){return c.id!==b.dataset.delExcat;});saveDB();render();});});
+  /* SETTINGS */
+  on('save-override-code','click',function(){
+    var el=document.getElementById('settings-code');if(!el)return;
+    var val=el.value.trim();if(!val){alert('Code cannot be empty.');return;}
+    DB.overrideCode=val;saveDB();
+    var msg=document.getElementById('code-saved-msg');if(msg){msg.textContent='✓ Code saved.';setTimeout(function(){msg.textContent='';},2000);}
+  });
   /* SUPABASE */
   on('sb-save','click',function(){DB.supabase.url=(document.getElementById('sb-url').value||'').trim();DB.supabase.anonKey=(document.getElementById('sb-key').value||'').trim();DB.supabase.enabled=!!(DB.supabase.url&&DB.supabase.anonKey);saveDB();render();});
   on('sb-disable','click',function(){DB.supabase.enabled=!DB.supabase.enabled;saveDB();render();});
@@ -1409,13 +1616,32 @@ function bindAll(){
   on('m-close','click',function(){S.modal=null;render();});
   on('m-cancel','click',function(){S.modal=null;render();});
   on('moverlay','click',function(e){if(e.target.id==='moverlay'){S.modal=null;render();}});
+  /* OVERRIDE CODE MODAL */
+  on('m-confirm-override','click',function(){
+    var inp=document.getElementById('override-code');
+    var errEl=document.getElementById('override-err');
+    if(!inp)return;
+    if(inp.value===DB.overrideCode){
+      S.modal=null;
+      // proceed with the pending paid entry
+      if(S._pendingEntry){
+        DB.entries.push(S._pendingEntry);
+        syncEntry(S._pendingEntry);
+        S._pendingEntry=null;
+        S.pf=newPF();saveDB();render();
+      }
+    } else {
+      if(errEl){errEl.textContent='Incorrect code. Try again.';}
+      inp.value='';inp.focus();
+    }
+  });
 
   /* MODAL SAVES */
   on('m-save-shift','click',function(){var n=document.getElementById('ms-name').value.trim();if(!n){alert('Name required');return;}DB.shifts.push({id:uid(),name:n,start:document.getElementById('ms-start').value,end:document.getElementById('ms-end').value});saveDB();S.modal=null;render();});
   on('m-save-agent','click',function(){var n=document.getElementById('ma-name').value.trim();if(!n){alert('Name required');return;}DB.agents.push({id:uid(),name:n,role:document.getElementById('ma-role').value.trim()||'Agent'});saveDB();S.modal=null;render();});
   on('m-save-game','click',function(){
     var n=document.getElementById('mg-name').value.trim();if(!n){alert('Game name required');return;}
-    DB.games.push({id:uid(),name:n,backendLoaded:parseFloat(document.getElementById('mg-bal').value)||0,vendorId:document.getElementById('mg-vendor').value||'',backendLink:document.getElementById('mg-blink').value||'',playerLink:document.getElementById('mg-plink').value||'',username:document.getElementById('mg-user').value||'',password:document.getElementById('mg-pass').value||'',pricePer1k:parseFloat(document.getElementById('mg-price').value)||10,reloadHistory:[]});
+    DB.games.push({id:uid(),name:n,backendLoaded:parseFloat(document.getElementById('mg-bal').value)||0,gameVendorId:document.getElementById('mg-vendor').value||'',vendorId:'',backendLink:document.getElementById('mg-blink').value||'',playerLink:document.getElementById('mg-plink').value||'',username:document.getElementById('mg-user').value||'',password:document.getElementById('mg-pass').value||'',pricePer1k:parseFloat(document.getElementById('mg-price').value)||10,reloadHistory:[]});
     saveDB();S.modal=null;render();
   });
   on('m-save-pm','click',function(){var n=document.getElementById('mpm-name').value.trim();if(!n){alert('Name required');return;}DB.payMethods.push({id:uid(),name:n,tags:[]});saveDB();S.modal=null;render();});
@@ -1510,6 +1736,7 @@ function bindAll(){
   on('dp-yes','click',dpClick('Yes'));on('dp-no','click',dpClick('No'));
   on('pf-clear','click',function(){S.pf=newPF();render();});
   on('pf-submit','click',function(){
+    if(!checkOnline())return;
     var f=S.pf;
     if(f.playerUrl&&!isUrl(f.playerUrl)){alert('Enter a valid Facebook URL.');return;}
     var req=[['agent','Agent'],['playerName','Player Name'],['playerUrl','Player URL'],['deposit','Deposit'],['recharge','Recharge'],['payMethodId','Payment Method'],['payTagId','Payment Tag'],['custTag','Customer Tag'],['gameId','Game ID'],['gameName','Game Name'],['depositOnPage','Deposit on Page']];
@@ -1519,7 +1746,16 @@ function bindAll(){
     var payTag=f.payTagId?tagsFor(f.payMethodId).find(function(t){return t.id===f.payTagId;}):null;
     var hasNew=!!(f.salesName||f.legalName||f.contact||f.email);
     var d=parseFloat(f.deposit)||0,r=parseFloat(f.recharge)||0;
-    DB.entries.push({id:uid(),type:'paid',isNewPlayer:hasNew,date:f.date,shift:f.shift,agent:f.agent,playerName:f.playerName,playerUrl:f.playerUrl,deposit:f.deposit,recharge:f.recharge,promo:(r-d).toFixed(2),promoP:d>0?((r-d)/d*100).toFixed(1)+'%':'0%',payMethodId:f.payMethodId,payTagId:f.payTagId,payTagLabel:payTag?payTag.tag:'',custTag:f.custTag,gameId:f.gameId,gameName:f.gameName,depositOnPage:f.depositOnPage,pageName:f.pageName,huntingProfile:f.huntingProfile,salesName:f.salesName,legalName:f.legalName,contact:f.contact,email:f.email});
+    var promoPct=d>0?((r-d)/d)*100:0;
+    var entry={id:uid(),type:'paid',isNewPlayer:hasNew,date:f.date,shift:f.shift,agent:f.agent,playerName:f.playerName,playerUrl:f.playerUrl,deposit:f.deposit,recharge:f.recharge,promo:(r-d).toFixed(2),promoP:d>0?((r-d)/d*100).toFixed(1)+'%':'0%',payMethodId:f.payMethodId,payTagId:f.payTagId,payTagLabel:payTag?payTag.tag:'',custTag:f.custTag,gameId:f.gameId,gameName:f.gameName,depositOnPage:f.depositOnPage,pageName:f.pageName,huntingProfile:f.huntingProfile,salesName:f.salesName,legalName:f.legalName,contact:f.contact,email:f.email};
+    if(promoPct>100){
+      S._pendingEntry=entry;
+      S.modal={type:'overrideCode'};
+      render();
+      return;
+    }
+    DB.entries.push(entry);
+    syncEntry(entry);
     S.pf=newPF();saveDB();render();
   });
 
@@ -1529,11 +1765,13 @@ function bindAll(){
   var fpurl=document.getElementById('ff-purl');if(fpurl)fpurl.addEventListener('blur',function(){ff.playerUrl=fpurl.value;render();});
   on('ff-clear','click',function(){S.ff=newFF();render();});
   on('ff-submit','click',function(){
+    if(!checkOnline())return;
     var f=S.ff;var req=[['agent','Agent'],['playerName','Player Name'],['fpAmount','Freeplay Amount'],['gameId','Game ID'],['gameName','Game Name']];
     for(var i=0;i<req.length;i++){if(!f[req[i][0]]){alert(req[i][1]+' is required.');return;}}
     var hasInfo=!!(f.salesName||f.legalName||f.contact||f.email);
     var hasPaid=DB.entries.some(function(e){return e.type==='paid'&&(e.playerName||'').toLowerCase()===(f.playerName||'').toLowerCase();});
-    DB.entries.push({id:uid(),type:'freeplay',isNewPlayer:hasInfo&&hasPaid,date:f.date,shift:f.shift,agent:f.agent,playerName:f.playerName,playerUrl:f.playerUrl,fpAmount:f.fpAmount,gameId:f.gameId,gameName:f.gameName,salesName:f.salesName,legalName:f.legalName,contact:f.contact,email:f.email});
+    var entry={id:uid(),type:'freeplay',isNewPlayer:hasInfo&&hasPaid,date:f.date,shift:f.shift,agent:f.agent,playerName:f.playerName,playerUrl:f.playerUrl,fpAmount:f.fpAmount,gameId:f.gameId,gameName:f.gameName,salesName:f.salesName,legalName:f.legalName,contact:f.contact,email:f.email};
+    DB.entries.push(entry);syncEntry(entry);
     S.ff=newFF();saveDB();render();
   });
 
@@ -1546,6 +1784,7 @@ function bindAll(){
   var cashEl=document.getElementById('rf-cash');if(cashEl)cashEl.addEventListener('input',function(){rf.cashoutPaid=cashEl.value;});
   on('rf-clear','click',function(){S.rf=newRF();render();});
   on('rf-submit','click',function(){
+    if(!checkOnline())return;
     var gidV=gidEl?gidEl.value:rf.gameId;var gnV=(document.getElementById('rf-gname')||{}).value||rf.gameName;
     var crV=credEl?credEl.value:rf.rdCredits;var caV=cashEl?cashEl.value:rf.cashoutPaid;
     var agV=(document.getElementById('rf-agent')||{}).value||rf.agent;
@@ -1553,7 +1792,8 @@ function bindAll(){
     var dtV=(document.getElementById('rf-date')||{}).value||rf.date;
     if(!dtV||!shV||!agV||!gidV||!gnV||!crV||!caV){alert('All fields are required.');return;}
     var match=DB.entries.find(function(e){return e.type==='paid'&&e.gameId===gidV;});
-    DB.entries.push({id:uid(),type:'redeem',date:dtV,shift:shV,agent:agV,gameId:gidV,gameName:gnV,playerName:match?match.playerName:'',rdCredits:crV,cashoutPaid:caV});
+    var entry={id:uid(),type:'redeem',date:dtV,shift:shV,agent:agV,gameId:gidV,gameName:gnV,playerName:match?match.playerName:'',rdCredits:crV,cashoutPaid:caV};
+    DB.entries.push(entry);syncEntry(entry);
     S.rf=newRF();saveDB();render();
   });
 }
