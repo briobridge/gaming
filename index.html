@@ -176,14 +176,15 @@ var DEF={
   expCats:[{id:'ec1',name:'Payroll'},{id:'ec2',name:'Rent'},{id:'ec3',name:'Utilities'},{id:'ec4',name:'Marketing'},{id:'ec5',name:'Misc'}],
   expenses:[],entries:[],closedShifts:[],attendance:[],
   shiftStart:new Date().toISOString(),
-  supabase:{url:'',anonKey:'',enabled:false},
+  supabase:{url:'https://eioindyucvbkvybbevmc.supabase.co',anonKey:'sb_publishable_VPBm_1F6jl7dBMHJi1jokA_UOdcW6jZ',enabled:true},
 };
 
 var DB=loadDB()||JSON.parse(JSON.stringify(DEF));
 if(!DB.staff)DB.staff=[];
 if(!DB.closedShifts)DB.closedShifts=[];
 if(!DB.attendance)DB.attendance=[];
-if(!DB.supabase)DB.supabase={url:'',anonKey:'',enabled:false};
+if(!DB.supabase)DB.supabase={url:'https://eioindyucvbkvybbevmc.supabase.co',anonKey:'sb_publishable_VPBm_1F6jl7dBMHJi1jokA_UOdcW6jZ',enabled:true};
+if(!DB.supabase.url)DB.supabase={url:'https://eioindyucvbkvybbevmc.supabase.co',anonKey:'sb_publishable_VPBm_1F6jl7dBMHJi1jokA_UOdcW6jZ',enabled:true};
 if(!DB.expenses)DB.expenses=[];
 if(!DB.expCats)DB.expCats=DEF.expCats;
 DB.games.forEach(function(g){if(!g.vendorId)g.vendorId='';if(!g.reloadHistory)g.reloadHistory=[];});
@@ -220,6 +221,7 @@ var S={
   adminSection:'dashboard',modal:null,editGameId:null,
   txSearch:'',txType:'all',txAgent:'',txGame:'',txShift:'',txDate:'',txSort:'date_desc',
   afAgent:'',afDate:'',afStatus:'',
+  pfDate:'',pfShift:'',
   pf:newPF(),ff:newFF(),rf:newRF(),
 };
 function newPF(){return{date:today(),shift:getShift(),agent:'',playerName:'',playerUrl:'',deposit:'',recharge:'',promo:'',promoP:'',payMethodId:'',payTagId:'',custTag:'',gameId:'',gameName:'',depositOnPage:'',pageName:'',huntingProfile:'',salesName:'',legalName:'',contact:'',email:''};}
@@ -495,6 +497,7 @@ function buildAdmin(){
   var sections=[
     {id:'dashboard',icon:'📊',label:'Dashboard'},
     {id:'transactions',icon:'📋',label:'Transactions'},
+    {id:'performance',icon:'🏆',label:'Agent Performance'},
     {id:'attendance',icon:'🗓',label:'Attendance'},
     {id:'shifts',icon:'↔',label:'Shifts'},
     {id:'agents',icon:'👥',label:'Agents'},
@@ -512,6 +515,7 @@ function buildAdmin(){
   switch(S.adminSection){
     case 'dashboard':content=buildDash();break;
     case 'transactions':content=buildTx();break;
+    case 'performance':content=buildPerformance();break;
     case 'attendance':content=buildAdminAtt();break;
     case 'shifts':content=buildAShifts();break;
     case 'agents':content=buildAAgents();break;
@@ -635,7 +639,135 @@ function buildTx(){
   '<div class="fc"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>Type</th><th>Session</th><th>Date</th><th>Agent</th><th>Player</th><th>Game ID</th><th>Game</th><th>Deposit</th><th>Amount</th><th>Cashout</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 
-/* ───── ADMIN ATTENDANCE ───── */
+/* ───── AGENT PERFORMANCE ───── */
+function buildPerformance(){
+  // Collect all entries across current + closed shifts
+  var allE=DB.entries.slice();
+  DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(e);});});
+
+  var agentList=agentNames();
+  var pfDate=S.pfDate||'';
+  var pfShift=S.pfShift||'';
+
+  // Filter by date/shift if set
+  var filtered=allE.slice();
+  if(pfDate)filtered=filtered.filter(function(e){return(e.date||'').indexOf(pfDate)>=0;});
+  if(pfShift)filtered=filtered.filter(function(e){return e.shift===pfShift;});
+
+  // Build stats per agent
+  var stats=agentList.map(function(name){
+    var myE=filtered.filter(function(e){return e.agent===name;});
+    var paid=myE.filter(function(e){return e.type==='paid';});
+    var fp=myE.filter(function(e){return e.type==='freeplay';});
+    var rd=myE.filter(function(e){return e.type==='redeem';});
+    var tDep=paid.reduce(function(s,e){return s+parseFloat(e.deposit||0);},0);
+    var tRec=paid.reduce(function(s,e){return s+parseFloat(e.recharge||0);},0);
+    var tFP=fp.reduce(function(s,e){return s+parseFloat(e.fpAmount||0);},0);
+    var tCash=rd.reduce(function(s,e){return s+parseFloat(e.cashoutPaid||0);},0);
+    var newP=myE.filter(function(e){return e.isNewPlayer;}).length;
+    var avgDep=paid.length?tDep/paid.length:0;
+    var convRate=myE.length?(paid.length/myE.length*100).toFixed(0):0;
+    // Unique players
+    var players=[];myE.forEach(function(e){if(e.playerName&&players.indexOf(e.playerName)<0)players.push(e.playerName);});
+    return{name:name,paidCount:paid.length,fpCount:fp.length,rdCount:rd.length,tDep:tDep,tRec:tRec,tFP:tFP,tCash:tCash,newP:newP,avgDep:avgDep,convRate:convRate,uniquePlayers:players.length,total:myE.length};
+  }).filter(function(a){return a.total>0||pfDate===''&&pfShift==='';});
+
+  // Sort by total deposit desc
+  stats.sort(function(a,b){return b.tDep-a.tDep;});
+
+  // Overall totals
+  var totDep=stats.reduce(function(s,a){return s+a.tDep;},0);
+  var totRec=stats.reduce(function(s,a){return s+a.tRec;},0);
+  var totNew=stats.reduce(function(s,a){return s+a.newP;},0);
+  var topAgent=stats.length?stats[0]:null;
+
+  // Per-agent game breakdown
+  var gameBreakdown=stats.map(function(a){
+    var myPaid=filtered.filter(function(e){return e.type==='paid'&&e.agent===a.name;});
+    var byGame={};
+    myPaid.forEach(function(e){
+      if(!byGame[e.gameName])byGame[e.gameName]={count:0,dep:0,rec:0};
+      byGame[e.gameName].count++;byGame[e.gameName].dep+=parseFloat(e.deposit||0);byGame[e.gameName].rec+=parseFloat(e.recharge||0);
+    });
+    var gameRows=Object.keys(byGame).map(function(gn){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">'+esc(gn)+'</span><span>'+byGame[gn].count+' txns · '+fmt$(byGame[gn].dep)+'</span></div>';}).join('')||'<div style="font-size:11px;color:var(--text3)">No paid recharges</div>';
+    return{name:a.name,gameRows:gameRows};
+  });
+
+  var shiftOpts=shiftNames().map(function(n){return '<option value="'+esc(n)+'"'+(pfShift===n?' selected':'')+'>'+esc(n)+'</option>';}).join('');
+
+  // Top 3 badges
+  var rankBadge=function(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'';};
+
+  var tableRows=stats.length?stats.map(function(a,i){
+    var pct=totDep>0?(a.tDep/totDep*100).toFixed(1):0;
+    var barW=totDep>0?Math.round(a.tDep/totDep*100):0;
+    return '<tr>'+
+      '<td style="font-weight:600;white-space:nowrap">'+rankBadge(i)+' '+esc(a.name)+'</td>'+
+      '<td style="font-family:var(--mono)">'+a.paidCount+'</td>'+
+      '<td>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<div style="flex:1;background:var(--bg4);border-radius:4px;height:6px;min-width:60px">'+
+            '<div style="width:'+barW+'%;background:var(--accent3);height:6px;border-radius:4px"></div>'+
+          '</div>'+
+          '<span style="font-family:var(--mono);font-size:11px;color:var(--accent3);white-space:nowrap">'+fmt$(a.tDep)+'</span>'+
+          '<span style="font-size:10px;color:var(--text3)">('+pct+'%)</span>'+
+        '</div>'+
+      '</td>'+
+      '<td style="font-family:var(--mono);color:var(--accent)">'+fmt$(a.tRec)+'</td>'+
+      '<td style="font-family:var(--mono);color:var(--accent2)">'+fmt$(a.tFP)+'</td>'+
+      '<td style="font-family:var(--mono);color:var(--danger)">'+fmt$(a.tCash)+'</td>'+
+      '<td><span class="badge bd-green">'+a.newP+'</span></td>'+
+      '<td style="font-size:11px;color:var(--text3)">'+a.uniquePlayers+'</td>'+
+      '<td style="font-size:11px;color:var(--text3)">'+fmt$(a.avgDep)+'</td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="9" class="empty-row">No data for this filter.</td></tr>';
+
+  var cards=stats.slice(0,4).map(function(a,i){
+    return '<div class="kpi-card" style="position:relative;overflow:hidden">'+
+      '<div style="position:absolute;top:10px;right:12px;font-size:20px;opacity:.7">'+rankBadge(i)+'</div>'+
+      '<div class="kpi-label">'+esc(a.name)+'</div>'+
+      '<div class="kpi-value" style="color:var(--accent3);font-size:16px">'+fmt$(a.tDep)+'</div>'+
+      '<div class="kpi-sub">'+a.paidCount+' recharges · '+a.newP+' new players</div>'+
+    '</div>';
+  }).join('');
+
+  var gbSection=gameBreakdown.length?
+    '<div class="fc" style="margin-top:16px">'+fcHead('Per-Agent Game Breakdown','var(--accent2)')+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:14px 16px">'+
+      gameBreakdown.map(function(a){
+        return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px">'+
+          '<div style="font-weight:700;font-size:13px;margin-bottom:8px">'+esc(a.name)+'</div>'+a.gameRows+'</div>';
+      }).join('')+
+    '</div></div>':'';
+
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
+    '<h2 style="font-size:17px;font-weight:800">Agent Performance</h2>'+
+    '<div style="font-size:11px;color:var(--text3)">All shifts combined · '+filtered.length+' entries</div>'+
+  '</div>'+
+  // Summary KPI cards
+  (cards?'<div class="akpi" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:16px">'+cards+'</div>':'')+
+  // Overall totals
+  '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">'+
+    kCard('Total Deposits',fmt$(totDep),'all agents','var(--accent3)')+
+    kCard('Total Recharges',fmt$(totRec),'all agents','var(--accent)')+
+    kCard('New Players Brought',totNew,'combined','var(--warn)')+
+    kCard('Agents Active',stats.filter(function(a){return a.total>0;}).length,'with entries','var(--accent2)')+
+  '</div>'+
+  // Filters
+  '<div class="fc" style="margin-bottom:12px"><div class="filter-bar">'+
+    '<input type="text" id="pf-date" placeholder="Date filter (e.g. May-2025)" value="'+esc(pfDate)+'" style="width:180px">'+
+    '<select id="pf-shift" style="width:140px"><option value="">All Shifts</option>'+shiftOpts+'</select>'+
+    '<button class="btn btn-ghost btn-sm" id="pf-clear-filters">Clear</button>'+
+    '<button class="btn btn-ghost btn-sm" id="export-perf" style="margin-left:auto">⬇ Export CSV</button>'+
+  '</div></div>'+
+  // Main table
+  '<div class="fc">'+fcHead('Leaderboard','var(--warn)')+
+  '<div class="tbl-wrap"><table>'+
+    '<thead><tr><th>Agent</th><th>Paid Txns</th><th>Total Deposit</th><th>Total Recharge</th><th>Freeplay</th><th>Cashouts</th><th>New Players</th><th>Unique Players</th><th>Avg Deposit</th></tr></thead>'+
+    '<tbody>'+tableRows+'</tbody>'+
+  '</table></div></div>'+
+  gbSection;
+}
 function buildAdminAtt(){
   var people=allPeople();
   var recs=DB.attendance.slice();
@@ -846,18 +978,116 @@ function buildAExp(){
 }
 
 /* ───── SUPABASE ───── */
+function sbHeaders(){
+  var sb=DB.supabase;
+  return{'apikey':sb.anonKey,'Authorization':'Bearer '+sb.anonKey,'Content-Type':'application/json','Prefer':'return=minimal'};
+}
+function sbUrl(table){return DB.supabase.url+'/rest/v1/'+table;}
+async function sbPush(){
+  var sb=DB.supabase;if(!sb.enabled||!sb.url||!sb.anonKey)return{ok:false,msg:'Not configured'};
+  try{
+    var allE=DB.entries.slice();DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(Object.assign({},e,{shift_session:sh.label||sh.date||'Closed'}));});});
+    // Upsert entries
+    var ePayload=allE.map(function(e){return{id:e.id,type:e.type,date:e.date,shift:e.shift,shift_session:e.shift_session||'Current',agent:e.agent||'',player_name:e.playerName||'',player_url:e.playerUrl||'',game_id:e.gameId||'',game_name:e.gameName||'',deposit:parseFloat(e.deposit||0),recharge:parseFloat(e.recharge||0),promo:parseFloat(e.promo||0),fp_amount:parseFloat(e.fpAmount||0),rd_credits:parseFloat(e.rdCredits||0),cashout_paid:parseFloat(e.cashoutPaid||0),is_new_player:!!e.isNewPlayer,cust_tag:e.custTag||'',pay_method_id:e.payMethodId||'',legal_name:e.legalName||'',contact:e.contact||'',email:e.email||''};});
+    if(ePayload.length){var r1=await fetch(sbUrl('entries'),{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(ePayload)});if(!r1.ok){var t=await r1.text();return{ok:false,msg:'Entries error: '+r1.status+' '+t};}}
+    // Upsert attendance
+    var aPayload=DB.attendance.map(function(a){return{id:a.id,agent_id:a.agentId,agent_name:a.agentName,date:a.date,check_in:a.checkIn||null,check_out:a.checkOut||null,duration_mins:a.duration||null,status:a.status||'present',leave_reason:a.leaveReason||''};});
+    if(aPayload.length){var r2=await fetch(sbUrl('attendance'),{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(aPayload)});if(!r2.ok){var t2=await r2.text();return{ok:false,msg:'Attendance error: '+r2.status+' '+t2};}}
+    return{ok:true,msg:'Pushed '+ePayload.length+' entries and '+aPayload.length+' attendance records'};
+  }catch(e){return{ok:false,msg:'Network error: '+e.message};}
+}
+async function sbPull(){
+  var sb=DB.supabase;if(!sb.enabled||!sb.url||!sb.anonKey)return{ok:false,msg:'Not configured'};
+  try{
+    var r=await fetch(sbUrl('entries')+'?order=id',{headers:sbHeaders()});
+    if(!r.ok){var t=await r.text();return{ok:false,msg:'Pull error: '+r.status+' '+t};}
+    var rows=await r.json();
+    if(rows&&rows.length){
+      var mapped=rows.map(function(row){return{id:row.id,type:row.type,date:row.date,shift:row.shift,agent:row.agent,playerName:row.player_name,playerUrl:row.player_url,gameId:row.game_id,gameName:row.game_name,deposit:row.deposit,recharge:row.recharge,promo:row.promo,fpAmount:row.fp_amount,rdCredits:row.rd_credits,cashoutPaid:row.cashout_paid,isNewPlayer:row.is_new_player,custTag:row.cust_tag,payMethodId:row.pay_method_id,legalName:row.legal_name,contact:row.contact,email:row.email};});
+      DB.entries=mapped.filter(function(e){return e.shift_session==='Current'||!e.shift_session;});
+    }
+    return{ok:true,msg:'Pulled '+((rows&&rows.length)||0)+' entries from Supabase'};
+  }catch(e){return{ok:false,msg:'Network error: '+e.message};}
+}
 function buildSupabase(){
   var sb=DB.supabase;var ok=sb.enabled&&sb.url&&sb.anonKey;
   return '<h2 style="font-size:17px;font-weight:800;margin-bottom:16px">Supabase Integration</h2>'+
     '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;font-size:12px;border:1px solid var(--border2);background:var(--bg3);margin-bottom:20px">'+
-      '<div style="width:8px;height:8px;border-radius:50%;background:'+(ok?'var(--accent3)':sb.url?'var(--danger)':'var(--text3)') +'"></div>'+
-      '<span style="font-weight:600">'+(ok?'Connected':sb.url?'Not connected — check credentials':'Not configured')+'</span>'+
+      '<div style="width:8px;height:8px;border-radius:50%;background:'+(ok?'var(--accent3)':sb.url?'var(--danger)':'var(--text3)')+'"></div>'+
+      '<span style="font-weight:600">'+(ok?'Connected — '+sb.url:sb.url?'Not connected — check credentials':'Not configured')+'</span>'+
     '</div>'+
     '<div class="fc" style="margin-bottom:16px">'+fcHead('Connection Settings','var(--accent3)')+
-    '<div class="fg" style="grid-template-columns:1fr">'+fld('Project URL',true,inp('sb-url',sb.url,'https://xxxx.supabase.co','url'))+fld('Anon Key',true,'<input type="text" id="sb-key" value="'+esc(sb.anonKey)+'" placeholder="eyJhbGci..." style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:13px;width:100%;font-family:var(--font)" autocomplete="off">')+'</div>'+
-    '<div style="padding:0 16px 12px"><div class="desc-note">Go to Supabase → Settings → API for your Project URL and anon public key.</div></div>'+
-    '<div class="sub-bar" style="justify-content:space-between"><button class="btn btn-ghost btn-sm" id="sb-test">Test Connection</button><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" id="sb-disable">'+(sb.enabled?'Disable':'Keep Disabled')+'</button><button class="btn btn-success btn-sm" id="sb-save">Save &amp; Enable</button></div></div></div>'+
-    '<div id="sb-msg" style="font-size:12px;color:var(--text3);padding:8px 0"></div>';
+    '<div class="fg" style="grid-template-columns:1fr">'+
+      fld('Project URL',true,inp('sb-url',sb.url,'https://xxxx.supabase.co','url'))+
+      fld('Anon / Publishable Key',true,'<input type="text" id="sb-key" value="'+esc(sb.anonKey)+'" placeholder="sb_publishable_..." style="background:var(--inp);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;font-family:var(--mono)" autocomplete="off">') +
+    '</div>'+
+    '<div style="padding:0 16px 12px"><div class="desc-note">Your Supabase credentials are saved. Tables required: <strong>entries</strong>, <strong>attendance</strong>. Run the SQL setup script below if tables don\'t exist yet.</div></div>'+
+    '<div class="sub-bar" style="justify-content:space-between">'+
+      '<button class="btn btn-ghost btn-sm" id="sb-test">Test Connection</button>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn btn-ghost btn-sm" id="sb-disable">'+(sb.enabled?'Disable':'Enable')+'</button>'+
+        '<button class="btn btn-success btn-sm" id="sb-save">Save &amp; Enable</button>'+
+      '</div>'+
+    '</div>'+
+    '</div>'+
+    '<div class="fc" style="margin-bottom:16px">'+fcHead('Sync Data','var(--accent2)')+
+    '<div style="padding:14px 16px;display:grid;gap:12px">'+
+      '<div style="font-size:12px;color:var(--text2)">Push sends all entries and attendance to Supabase. Pull fetches latest data from Supabase into the app.</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button class="btn btn-primary btn-sm" id="sb-push" '+(ok?'':'disabled style="opacity:.4"')+'>&#x2B06; Push All Data to Supabase</button>'+
+        '<button class="btn btn-ghost btn-sm" id="sb-pull" '+(ok?'':'disabled style="opacity:.4"')+'>&#x2B07; Pull Entries from Supabase</button>'+
+        '<button class="btn btn-warn btn-sm" id="sb-push-now" '+(ok?'':'disabled style="opacity:.4"')+'>&#x21BB; Auto-Sync Now</button>'+
+      '</div>'+
+      '<div id="sb-msg" style="font-size:12px;color:var(--text3);padding:4px 0;min-height:20px"></div>'+
+    '</div></div>'+
+    '<div class="fc">'+fcHead('SQL Setup Script','var(--text3)')+
+    '<div style="padding:14px 16px">'+
+      '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Run this in your Supabase SQL editor to create the required tables:</div>'+
+      '<pre style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:var(--text2);overflow-x:auto;line-height:1.6;font-family:var(--mono)">'+
+'create table if not exists entries (\n'+
+'  id text primary key,\n'+
+'  type text,\n'+
+'  date text,\n'+
+'  shift text,\n'+
+'  shift_session text default \'Current\',\n'+
+'  agent text,\n'+
+'  player_name text,\n'+
+'  player_url text,\n'+
+'  game_id text,\n'+
+'  game_name text,\n'+
+'  deposit numeric default 0,\n'+
+'  recharge numeric default 0,\n'+
+'  promo numeric default 0,\n'+
+'  fp_amount numeric default 0,\n'+
+'  rd_credits numeric default 0,\n'+
+'  cashout_paid numeric default 0,\n'+
+'  is_new_player boolean default false,\n'+
+'  cust_tag text,\n'+
+'  pay_method_id text,\n'+
+'  legal_name text,\n'+
+'  contact text,\n'+
+'  email text,\n'+
+'  created_at timestamptz default now()\n'+
+');\n\n'+
+'create table if not exists attendance (\n'+
+'  id text primary key,\n'+
+'  agent_id text,\n'+
+'  agent_name text,\n'+
+'  date text,\n'+
+'  check_in text,\n'+
+'  check_out text,\n'+
+'  duration_mins int,\n'+
+'  status text default \'present\',\n'+
+'  leave_reason text,\n'+
+'  created_at timestamptz default now()\n'+
+');\n\n'+
+'alter table entries enable row level security;\n'+
+'alter table attendance enable row level security;\n'+
+'create policy "Allow all" on entries for all using (true) with check (true);\n'+
+'create policy "Allow all" on attendance for all using (true) with check (true);'+
+      '</pre>'+
+      '<button class="btn btn-ghost btn-sm" style="margin-top:8px" id="sb-copy-sql">Copy SQL</button>'+
+    '</div></div>';
 }
 
 /* ───── BACKUP ───── */
@@ -1078,6 +1308,17 @@ function bindAll(){
     saveDB();render();
   });});
 
+  /* PERFORMANCE FILTERS */
+  (function(){var el=document.getElementById('pf-date');if(el)el.addEventListener('input',function(){S.pfDate=el.value;render();});})();
+  (function(){var el=document.getElementById('pf-shift');if(el)el.addEventListener('change',function(){S.pfShift=el.value;render();});})();
+  on('pf-clear-filters','click',function(){S.pfDate='';S.pfShift='';render();});
+  on('export-perf','click',function(){
+    var allE=DB.entries.slice();DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(e);});});
+    var cols=['agent','type','date','shift','playerName','gameId','gameName','deposit','recharge','promo','fpAmount','rdCredits','cashoutPaid','isNewPlayer'];
+    var rows=[cols.join(',')].concat(allE.map(function(e){return cols.map(function(c){return '"'+String(e[c]||'').replace(/"/g,'""')+'"';}).join(',');}));
+    dl(rows.join('\n'),'text/csv','agent-performance-'+today()+'.csv');
+  });
+
   /* ATTENDANCE ADMIN FILTERS */
   function afBind(id,key){var el=document.getElementById(id);if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',function(){S[key]=el.value;render();});}
   afBind('af-agent','afAgent');afBind('af-date','afDate');afBind('af-status','afStatus');
@@ -1123,11 +1364,29 @@ function bindAll(){
   all('[data-del-excat]',function(b){b.addEventListener('click',function(){DB.expCats=DB.expCats.filter(function(c){return c.id!==b.dataset.delExcat;});saveDB();render();});});
   /* SUPABASE */
   on('sb-save','click',function(){DB.supabase.url=(document.getElementById('sb-url').value||'').trim();DB.supabase.anonKey=(document.getElementById('sb-key').value||'').trim();DB.supabase.enabled=!!(DB.supabase.url&&DB.supabase.anonKey);saveDB();render();});
-  on('sb-disable','click',function(){DB.supabase.enabled=false;saveDB();render();});
+  on('sb-disable','click',function(){DB.supabase.enabled=!DB.supabase.enabled;saveDB();render();});
   on('sb-test','click',function(){
-    var url=(document.getElementById('sb-url').value||'').trim();var key=(document.getElementById('sb-key').value||'').trim();var msg=document.getElementById('sb-msg');
-    if(!url||!key){if(msg)msg.textContent='Enter URL and key first.';return;}if(msg)msg.textContent='Testing...';
-    fetch(url+'/rest/v1/',{headers:{'apikey':key,'Authorization':'Bearer '+key}}).then(function(r){if(msg)msg.textContent=r.ok?'✓ Connected!':'Check credentials (status '+r.status+')';}).catch(function(e){if(msg)msg.textContent='✗ '+e.message;});
+    var url=(document.getElementById('sb-url')||{}).value||DB.supabase.url;
+    var key=(document.getElementById('sb-key')||{}).value||DB.supabase.anonKey;
+    var msg=document.getElementById('sb-msg');if(!msg)return;
+    if(!url||!key){msg.textContent='Enter URL and key first.';return;}msg.textContent='Testing...';
+    fetch(url+'/rest/v1/',{headers:{'apikey':key,'Authorization':'Bearer '+key}}).then(function(r){msg.style.color=r.ok?'var(--accent3)':'var(--danger)';msg.textContent=r.ok?'✓ Connection successful!':'Got response but check credentials (status '+r.status+')';}).catch(function(e){msg.style.color='var(--danger)';msg.textContent='✗ '+e.message;});
+  });
+  on('sb-push','click',function(){
+    var msg=document.getElementById('sb-msg');if(msg){msg.style.color='var(--text3)';msg.textContent='Pushing data to Supabase...';}
+    sbPush().then(function(r){if(msg){msg.style.color=r.ok?'var(--accent3)':'var(--danger)';msg.textContent=(r.ok?'✓ ':'✗ ')+r.msg;}});
+  });
+  on('sb-pull','click',function(){
+    var msg=document.getElementById('sb-msg');if(msg){msg.style.color='var(--text3)';msg.textContent='Pulling data from Supabase...';}
+    sbPull().then(function(r){saveDB();if(msg){msg.style.color=r.ok?'var(--accent3)':'var(--danger)';msg.textContent=(r.ok?'✓ ':'✗ ')+r.msg;}if(r.ok)render();});
+  });
+  on('sb-push-now','click',function(){
+    var msg=document.getElementById('sb-msg');if(msg){msg.style.color='var(--text3)';msg.textContent='Syncing...';}
+    sbPush().then(function(r){if(msg){msg.style.color=r.ok?'var(--accent3)':'var(--danger)';msg.textContent=(r.ok?'✓ Synced — ':'✗ ')+r.msg;}});
+  });
+  on('sb-copy-sql','click',function(){
+    var pre=document.querySelector('.admin-main pre');
+    if(pre){navigator.clipboard&&navigator.clipboard.writeText(pre.textContent).then(function(){var b=document.getElementById('sb-copy-sql');if(b){var orig=b.textContent;b.textContent='Copied!';setTimeout(function(){b.textContent=orig;},1500);}});}
   });
   /* BACKUP */
   on('export-json','click',function(){dl(JSON.stringify(DB,null,2),'application/json','gamecrm-backup-'+today()+'.json');});
@@ -1193,10 +1452,26 @@ function bindAll(){
     var de=document.getElementById('csd-'+gid);if(de){de.style.color=ok?'var(--accent3)':'var(--danger)';de.textContent=diff!==null?(ok?'✓ Matches':'⚠ Difference: '+fmt$(Math.abs(diff))):'';};
   });});
   on('m-confirm-close','click',function(){
+    // Validate all game balances are entered and match
+    var mismatches=[];
+    DB.games.forEach(function(g){
+      var calc=gameBal(g.id);
+      var entered=S.modal.balances&&S.modal.balances[g.id]!==undefined?S.modal.balances[g.id]:'';
+      if(entered===''){mismatches.push(esc(g.name)+': not entered');return;}
+      var diff=parseFloat(entered)-calc;
+      if(Math.abs(diff)>=0.01) mismatches.push(esc(g.name)+': difference of $'+Math.abs(diff).toFixed(2));
+    });
+    if(mismatches.length){
+      alert('Cannot close shift — the following game balances do not match:\n\n'+mismatches.join('\n')+'\n\nPlease verify and correct the actual closing balances before closing.');
+      return;
+    }
     var k=shiftKPIs();var label='Shift '+(DB.closedShifts.length+1)+' — '+today();
     DB.closedShifts.push({id:uid(),label:label,date:today(),closedAt:new Date().toISOString(),entries:DB.entries.slice(),summary:{paidCount:k.paidCount,totalR:k.totalR,totalDeposit:k.totalDeposit,totalFP:k.totalFP,totalCashout:k.totalCashout,newPlayers:k.newPlayers}});
     S.shiftReport={rows:[{label:'Shift',val:label},{label:'Paid Recharges',val:k.paidCount},{label:'Total Recharge',val:fmt$(k.totalR)},{label:'Total Deposit',val:fmt$(k.totalDeposit)},{label:'Freeplay Given',val:fmt$(k.totalFP)},{label:'Cashouts Paid',val:fmt$(k.totalCashout)},{label:'New Players',val:k.newPlayers},{label:'Duration',val:Math.round((Date.now()-new Date(DB.shiftStart).getTime())/60000)+' min'}]};
-    S.modal=null;S.page='closed';saveDB();render();
+    S.modal=null;S.page='closed';saveDB();
+    // Auto-push to Supabase if enabled
+    if(DB.supabase.enabled&&DB.supabase.url){sbPush().then(function(r){console.log('Supabase push:',r.msg);});}
+    render();
   });
 
   /* EDIT ENTRY SAVE */
