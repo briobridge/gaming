@@ -157,6 +157,13 @@ var STORE='gcrmv5';
 function loadDB(){try{var s=localStorage.getItem(STORE);if(s)return JSON.parse(s);}catch(e){}return null;}
 function saveDB(){try{localStorage.setItem(STORE,JSON.stringify(DB));}catch(e){}}
 
+// Push full config to Supabase whenever settings/agents/games/vendors change
+function pushConfig(){
+  var sb=DB.supabase;if(!sb||!sb.enabled||!sb.url||!sb.anonKey)return;
+  var cfg={id:'main_config',payload:JSON.stringify({shifts:DB.shifts,agents:DB.agents,staff:DB.staff,payMethods:DB.payMethods,pageNames:DB.pageNames,games:DB.games,payVendors:DB.payVendors,gameVendors:DB.gameVendors,expCats:DB.expCats,overrideCode:DB.overrideCode,shiftStart:DB.shiftStart})};
+  fetch(sbUrl('crm_config'),{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify([cfg])}).catch(function(){});
+}
+
 var DEF={
   shifts:[{id:'s1',name:'Morning',start:'06:00',end:'14:00'},{id:'s2',name:'Afternoon',start:'14:00',end:'22:00'},{id:'s3',name:'Night',start:'22:00',end:'06:00'}],
   agents:[{id:'a1',name:'Ali Hassan',role:'Agent'},{id:'a2',name:'Sara Ahmed',role:'Agent'},{id:'a3',name:'Usman Malik',role:'Senior Agent'}],
@@ -1129,30 +1136,84 @@ function sbHeaders(){
   return{'apikey':sb.anonKey,'Authorization':'Bearer '+sb.anonKey,'Content-Type':'application/json','Prefer':'return=minimal'};
 }
 function sbUrl(table){return DB.supabase.url+'/rest/v1/'+table;}
+function entryToRow(e,session){
+  return{id:e.id,type:e.type,date:e.date,shift:e.shift,shift_session:session,agent:e.agent||'',player_name:e.playerName||'',player_url:e.playerUrl||'',game_id:e.gameId||'',game_name:e.gameName||'',deposit:parseFloat(e.deposit||0),recharge:parseFloat(e.recharge||0),promo:parseFloat(e.promo||0),fp_amount:parseFloat(e.fpAmount||0),rd_credits:parseFloat(e.rdCredits||0),cashout_paid:parseFloat(e.cashoutPaid||0),is_new_player:!!e.isNewPlayer,cust_tag:e.custTag||'',pay_method_id:e.payMethodId||'',legal_name:e.legalName||'',contact:e.contact||'',email:e.email||''};
+}
+function rowToEntry(row){
+  return{id:row.id,type:row.type,date:row.date,shift:row.shift,agent:row.agent,playerName:row.player_name,playerUrl:row.player_url,gameId:row.game_id,gameName:row.game_name,deposit:row.deposit,recharge:row.recharge,promo:row.promo,fpAmount:row.fp_amount,rdCredits:row.rd_credits,cashoutPaid:row.cashout_paid,isNewPlayer:row.is_new_player,custTag:row.cust_tag,payMethodId:row.pay_method_id,legalName:row.legal_name,contact:row.contact,email:row.email};
+}
 async function sbPush(){
   var sb=DB.supabase;if(!sb.enabled||!sb.url||!sb.anonKey)return{ok:false,msg:'Not configured'};
   try{
-    var allE=DB.entries.slice();DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(Object.assign({},e,{shift_session:sh.label||sh.date||'Closed'}));});});
-    // Upsert entries
-    var ePayload=allE.map(function(e){return{id:e.id,type:e.type,date:e.date,shift:e.shift,shift_session:e.shift_session||'Current',agent:e.agent||'',player_name:e.playerName||'',player_url:e.playerUrl||'',game_id:e.gameId||'',game_name:e.gameName||'',deposit:parseFloat(e.deposit||0),recharge:parseFloat(e.recharge||0),promo:parseFloat(e.promo||0),fp_amount:parseFloat(e.fpAmount||0),rd_credits:parseFloat(e.rdCredits||0),cashout_paid:parseFloat(e.cashoutPaid||0),is_new_player:!!e.isNewPlayer,cust_tag:e.custTag||'',pay_method_id:e.payMethodId||'',legal_name:e.legalName||'',contact:e.contact||'',email:e.email||''};});
-    if(ePayload.length){var r1=await fetch(sbUrl('entries'),{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(ePayload)});if(!r1.ok){var t=await r1.text();return{ok:false,msg:'Entries error: '+r1.status+' '+t};}}
-    // Upsert attendance
-    var aPayload=DB.attendance.map(function(a){return{id:a.id,agent_id:a.agentId,agent_name:a.agentName,date:a.date,check_in:a.checkIn||null,check_out:a.checkOut||null,duration_mins:a.duration||null,status:a.status||'present',leave_reason:a.leaveReason||''};});
-    if(aPayload.length){var r2=await fetch(sbUrl('attendance'),{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(aPayload)});if(!r2.ok){var t2=await r2.text();return{ok:false,msg:'Attendance error: '+r2.status+' '+t2};}}
-    return{ok:true,msg:'Pushed '+ePayload.length+' entries and '+aPayload.length+' attendance records'};
+    var h=Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=minimal'});
+    // Push config (agents, games, settings, vendors etc.)
+    var cfg={id:'main_config',payload:JSON.stringify({shifts:DB.shifts,agents:DB.agents,staff:DB.staff,payMethods:DB.payMethods,pageNames:DB.pageNames,games:DB.games,payVendors:DB.payVendors,gameVendors:DB.gameVendors,expCats:DB.expCats,overrideCode:DB.overrideCode,shiftStart:DB.shiftStart})};
+    await fetch(sbUrl('crm_config'),{method:'POST',headers:h,body:JSON.stringify([cfg])});
+    // Push all entries
+    var allE=DB.entries.map(function(e){return entryToRow(e,'Current');});
+    DB.closedShifts.forEach(function(sh){(sh.entries||[]).forEach(function(e){allE.push(entryToRow(e,sh.label||sh.date||'Closed'));});});
+    if(allE.length){var r1=await fetch(sbUrl('entries'),{method:'POST',headers:h,body:JSON.stringify(allE)});if(!r1.ok){var t1=await r1.text();return{ok:false,msg:'Entries: '+r1.status+' '+t1};}}
+    // Push closed shifts metadata
+    var csRows=DB.closedShifts.map(function(sh){return{id:sh.id,label:sh.label||'',date:sh.date||'',closed_at:sh.closedAt||'',summary:JSON.stringify(sh.summary||{})};});
+    if(csRows.length)await fetch(sbUrl('closed_shifts'),{method:'POST',headers:h,body:JSON.stringify(csRows)});
+    // Push attendance
+    var aRows=DB.attendance.map(function(a){return{id:a.id,agent_id:a.agentId,agent_name:a.agentName,date:a.date,check_in:a.checkIn||null,check_out:a.checkOut||null,duration_mins:a.duration||null,status:a.status||'present',leave_reason:a.leaveReason||''};});
+    if(aRows.length)await fetch(sbUrl('attendance'),{method:'POST',headers:h,body:JSON.stringify(aRows)});
+    return{ok:true,msg:'Pushed '+allE.length+' entries, '+aRows.length+' attendance, '+csRows.length+' shifts'};
   }catch(e){return{ok:false,msg:'Network error: '+e.message};}
 }
 async function sbPull(){
   var sb=DB.supabase;if(!sb.enabled||!sb.url||!sb.anonKey)return{ok:false,msg:'Not configured'};
   try{
-    var r=await fetch(sbUrl('entries')+'?order=id',{headers:sbHeaders()});
-    if(!r.ok){var t=await r.text();return{ok:false,msg:'Pull error: '+r.status+' '+t};}
-    var rows=await r.json();
-    if(rows&&rows.length){
-      var mapped=rows.map(function(row){return{id:row.id,type:row.type,date:row.date,shift:row.shift,agent:row.agent,playerName:row.player_name,playerUrl:row.player_url,gameId:row.game_id,gameName:row.game_name,deposit:row.deposit,recharge:row.recharge,promo:row.promo,fpAmount:row.fp_amount,rdCredits:row.rd_credits,cashoutPaid:row.cashout_paid,isNewPlayer:row.is_new_player,custTag:row.cust_tag,payMethodId:row.pay_method_id,legalName:row.legal_name,contact:row.contact,email:row.email};});
-      DB.entries=mapped.filter(function(e){return e.shift_session==='Current'||!e.shift_session;});
+    var h=sbHeaders();
+    // 1. Pull config
+    var rc=await fetch(sbUrl('crm_config')+'?id=eq.main_config',{headers:h});
+    if(rc.ok){
+      var cfgRows=await rc.json();
+      if(cfgRows&&cfgRows.length&&cfgRows[0].payload){
+        try{
+          var cfg=JSON.parse(cfgRows[0].payload);
+          if(cfg.shifts&&cfg.shifts.length)DB.shifts=cfg.shifts;
+          if(cfg.agents&&cfg.agents.length)DB.agents=cfg.agents;
+          if(cfg.staff)DB.staff=cfg.staff;
+          if(cfg.payMethods&&cfg.payMethods.length)DB.payMethods=cfg.payMethods;
+          if(cfg.pageNames&&cfg.pageNames.length)DB.pageNames=cfg.pageNames;
+          if(cfg.games&&cfg.games.length)DB.games=cfg.games;
+          if(cfg.payVendors&&cfg.payVendors.length)DB.payVendors=cfg.payVendors;
+          if(cfg.gameVendors&&cfg.gameVendors.length)DB.gameVendors=cfg.gameVendors;
+          if(cfg.expCats&&cfg.expCats.length)DB.expCats=cfg.expCats;
+          if(cfg.overrideCode)DB.overrideCode=cfg.overrideCode;
+          if(cfg.shiftStart)DB.shiftStart=cfg.shiftStart;
+        }catch(pe){}
+      }
     }
-    return{ok:true,msg:'Pulled '+((rows&&rows.length)||0)+' entries from Supabase'};
+    // 2. Pull all entries
+    var re=await fetch(sbUrl('entries')+'?order=id&limit=10000',{headers:h});
+    if(!re.ok){var te=await re.text();return{ok:false,msg:'Entries error: '+re.status+' '+te};}
+    var eRows=await re.json();
+    DB.entries=(eRows||[]).filter(function(r){return r.shift_session==='Current'||!r.shift_session;}).map(rowToEntry);
+    // 3. Pull closed shifts
+    var rcs=await fetch(sbUrl('closed_shifts')+'?order=closed_at&limit=500',{headers:h});
+    if(rcs.ok){
+      var csRows=await rcs.json();
+      if(csRows&&csRows.length){
+        DB.closedShifts=csRows.map(function(row){
+          var se=(eRows||[]).filter(function(r){return r.shift_session===row.label;}).map(rowToEntry);
+          var sum={};try{sum=JSON.parse(row.summary||'{}');}catch(e){}
+          return{id:row.id,label:row.label,date:row.date,closedAt:row.closed_at,entries:se,summary:sum};
+        });
+      }
+    }
+    // 4. Pull attendance
+    var ra=await fetch(sbUrl('attendance')+'?order=date&limit=5000',{headers:h});
+    if(ra.ok){
+      var aRows=await ra.json();
+      if(aRows&&aRows.length){
+        DB.attendance=aRows.map(function(row){return{id:row.id,agentId:row.agent_id,agentName:row.agent_name,date:row.date,checkIn:row.check_in,checkInAt:null,checkOut:row.check_out,duration:row.duration_mins,status:row.status,leaveReason:row.leave_reason};});
+      }
+    }
+    saveDB();
+    return{ok:true,msg:'Loaded '+(eRows?eRows.length:0)+' entries from Supabase'};
   }catch(e){return{ok:false,msg:'Network error: '+e.message};}
 }
 function buildSupabase(){
@@ -1190,6 +1251,11 @@ function buildSupabase(){
     '<div style="padding:14px 16px">'+
       '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Run this in your Supabase SQL editor to create the required tables:</div>'+
       '<pre style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:var(--text2);overflow-x:auto;line-height:1.6;font-family:var(--mono)">'+
+'create table if not exists crm_config (\n'+
+'  id text primary key,\n'+
+'  payload text,\n'+
+'  updated_at timestamptz default now()\n'+
+');\n\n'+
 'create table if not exists entries (\n'+
 '  id text primary key,\n'+
 '  type text,\n'+
@@ -1215,6 +1281,14 @@ function buildSupabase(){
 '  email text,\n'+
 '  created_at timestamptz default now()\n'+
 ');\n\n'+
+'create table if not exists closed_shifts (\n'+
+'  id text primary key,\n'+
+'  label text,\n'+
+'  date text,\n'+
+'  closed_at text,\n'+
+'  summary text,\n'+
+'  created_at timestamptz default now()\n'+
+');\n\n'+
 'create table if not exists attendance (\n'+
 '  id text primary key,\n'+
 '  agent_id text,\n'+
@@ -1227,9 +1301,13 @@ function buildSupabase(){
 '  leave_reason text,\n'+
 '  created_at timestamptz default now()\n'+
 ');\n\n'+
+'alter table crm_config enable row level security;\n'+
 'alter table entries enable row level security;\n'+
+'alter table closed_shifts enable row level security;\n'+
 'alter table attendance enable row level security;\n'+
+'create policy "Allow all" on crm_config for all using (true) with check (true);\n'+
 'create policy "Allow all" on entries for all using (true) with check (true);\n'+
+'create policy "Allow all" on closed_shifts for all using (true) with check (true);\n'+
 'create policy "Allow all" on attendance for all using (true) with check (true);'+
       '</pre>'+
       '<button class="btn btn-ghost btn-sm" style="margin-top:8px" id="sb-copy-sql">Copy SQL</button>'+
@@ -1422,7 +1500,7 @@ function bindAll(){
   on('add-game-btn','click',function(){S.modal={type:'addGame'};render();});
   all('[data-edit-game]',function(b){b.addEventListener('click',function(){S.editGameId=b.dataset.editGame;render();});});
   all('[data-cancel-game]',function(b){b.addEventListener('click',function(){S.editGameId=null;render();});});
-  all('[data-del-game]',function(b){b.addEventListener('click',function(){if(confirm('Remove game?')){DB.games=DB.games.filter(function(g){return g.id!==b.dataset.delGame;});saveDB();render();}});});
+  all('[data-del-game]',function(b){b.addEventListener('click',function(){if(confirm('Remove game?')){DB.games=DB.games.filter(function(g){return g.id!==b.dataset.delGame;});saveDB();pushConfig();render();}});});
   all('[data-save-game]',function(b){b.addEventListener('click',function(){
     var g=DB.games.find(function(x){return x.id===b.dataset.saveGame;});if(!g)return;
     g.name=document.getElementById('ge-name').value||g.name;
@@ -1433,7 +1511,7 @@ function bindAll(){
     g.playerLink=document.getElementById('ge-plink').value||'';
     g.username=document.getElementById('ge-user').value||'';
     g.password=document.getElementById('ge-pass').value||'';
-    saveDB();S.editGameId=null;render();
+    saveDB();pushConfig();S.editGameId=null;render();
   });});
   all('[data-topup]',function(b){b.addEventListener('click',function(){
     var g=DB.games.find(function(x){return x.id===b.dataset.topup;});if(!g)return;
@@ -1443,13 +1521,13 @@ function bindAll(){
     g.backendLoaded=parseFloat(g.backendLoaded||0)+val;
     if(!g.reloadHistory)g.reloadHistory=[];
     g.reloadHistory.push({date:today(),amount:val,at:new Date().toISOString()});
-    saveDB();render();
+    saveDB();pushConfig();render();
   });});
   all('[data-setbal]',function(b){b.addEventListener('click',function(){
     var g=DB.games.find(function(x){return x.id===b.dataset.setbal;});if(!g)return;
     var nb=prompt('Set EXACT starting balance for "'+g.name+'"\n(Current: $'+parseFloat(g.backendLoaded).toFixed(2)+')');
     if(nb===null)return;var val=parseFloat(nb);if(isNaN(val)){alert('Invalid');return;}
-    g.backendLoaded=val;saveDB();render();
+    g.backendLoaded=val;saveDB();pushConfig();render();
   });});
 
   /* TX FILTERS */
@@ -1506,32 +1584,32 @@ function bindAll(){
 
   /* SHIFTS */
   on('add-shift-btn','click',function(){S.modal={type:'addShift'};render();});
-  all('[data-del-shift]',function(b){b.addEventListener('click',function(){DB.shifts=DB.shifts.filter(function(s){return s.id!==b.dataset.delShift;});saveDB();render();});});
+  all('[data-del-shift]',function(b){b.addEventListener('click',function(){DB.shifts=DB.shifts.filter(function(s){return s.id!==b.dataset.delShift;});saveDB();pushConfig();render();});});
   /* AGENTS */
   on('add-agent-btn','click',function(){S.modal={type:'addAgent'};render();});
-  all('[data-del-agent]',function(b){b.addEventListener('click',function(){DB.agents=DB.agents.filter(function(a){return a.id!==b.dataset.delAgent;});saveDB();render();});});
+  all('[data-del-agent]',function(b){b.addEventListener('click',function(){DB.agents=DB.agents.filter(function(a){return a.id!==b.dataset.delAgent;});saveDB();pushConfig();render();});});
   /* STAFF */
   on('add-staff-btn','click',function(){S.modal={type:'addStaff'};render();});
   all('[data-del-staff]',function(b){b.addEventListener('click',function(){if(confirm('Remove staff member?')){DB.staff=DB.staff.filter(function(m){return m.id!==b.dataset.delStaff;});saveDB();render();}});});
   all('[data-edit-staff]',function(b){b.addEventListener('click',function(){var m=DB.staff.find(function(x){return x.id===b.dataset.editStaff;});if(m){S.modal={type:'editStaff',staff:Object.assign({},m)};render();}});});
   /* PAY METHODS */
   on('add-pm-btn','click',function(){S.modal={type:'addPM'};render();});
-  all('[data-del-pm]',function(b){b.addEventListener('click',function(){DB.payMethods=DB.payMethods.filter(function(m){return m.id!==b.dataset.delPm;});saveDB();render();});});
-  all('[data-add-tag]',function(b){b.addEventListener('click',function(){var mid=b.dataset.addTag;var el=document.getElementById('new-tag-'+mid);if(!el||!el.value.trim())return;var m=DB.payMethods.find(function(x){return x.id===mid;});if(!m)return;m.tags.push({id:uid(),tag:el.value.trim()});saveDB();render();});});
-  all('[data-del-tag]',function(b){b.addEventListener('click',function(){var p=b.dataset.delTag.split('__');var m=DB.payMethods.find(function(x){return x.id===p[0];});if(!m)return;m.tags=m.tags.filter(function(t){return t.id!==p[1];});saveDB();render();});});
+  all('[data-del-pm]',function(b){b.addEventListener('click',function(){DB.payMethods=DB.payMethods.filter(function(m){return m.id!==b.dataset.delPm;});saveDB();pushConfig();render();});});
+  all('[data-add-tag]',function(b){b.addEventListener('click',function(){var mid=b.dataset.addTag;var el=document.getElementById('new-tag-'+mid);if(!el||!el.value.trim())return;var m=DB.payMethods.find(function(x){return x.id===mid;});if(!m)return;m.tags.push({id:uid(),tag:el.value.trim()});saveDB();pushConfig();render();});});
+  all('[data-del-tag]',function(b){b.addEventListener('click',function(){var p=b.dataset.delTag.split('__');var m=DB.payMethods.find(function(x){return x.id===p[0];});if(!m)return;m.tags=m.tags.filter(function(t){return t.id!==p[1];});saveDB();pushConfig();render();});});
   /* PAGES */
-  on('add-page-btn','click',function(){var v=document.getElementById('new-page-name').value.trim();if(!v)return;DB.pageNames.push({id:uid(),name:v});saveDB();render();});
-  all('[data-del-page]',function(b){b.addEventListener('click',function(){DB.pageNames=DB.pageNames.filter(function(p){return p.id!==b.dataset.delPage;});saveDB();render();});});
+  on('add-page-btn','click',function(){var v=document.getElementById('new-page-name').value.trim();if(!v)return;DB.pageNames.push({id:uid(),name:v});saveDB();pushConfig();render();});
+  all('[data-del-page]',function(b){b.addEventListener('click',function(){DB.pageNames=DB.pageNames.filter(function(p){return p.id!==b.dataset.delPage;});saveDB();pushConfig();render();});});
   /* VENDORS — payment vendors */
   on('add-pv-btn','click',function(){
     var name=prompt('Payment vendor name:');if(!name||!name.trim())return;
-    DB.payVendors.push({id:uid(),name:name.trim(),notes:'',fees:[]});saveDB();render();
+    DB.payVendors.push({id:uid(),name:name.trim(),notes:'',fees:[]});saveDB();pushConfig();render();
   });
-  all('[data-del-pv]',function(b){b.addEventListener('click',function(){if(confirm('Delete this vendor?')){DB.payVendors=DB.payVendors.filter(function(v){return v.id!==b.dataset.delPv;});saveDB();render();}});});
+  all('[data-del-pv]',function(b){b.addEventListener('click',function(){if(confirm('Delete this vendor?')){DB.payVendors=DB.payVendors.filter(function(v){return v.id!==b.dataset.delPv;});saveDB();pushConfig();render();}});});
   all('[data-del-pvfee]',function(b){b.addEventListener('click',function(){
     var p=b.dataset.delPvfee.split('__');var pvid=p[0];var feid=p[1];
     var pv=DB.payVendors.find(function(x){return x.id===pvid;});if(!pv)return;
-    pv.fees=pv.fees.filter(function(f){return f.id!==feid;});saveDB();render();
+    pv.fees=pv.fees.filter(function(f){return f.id!==feid;});saveDB();pushConfig();render();
   });});
   all('[data-add-pvfee]',function(b){b.addEventListener('click',function(){
     var pvid=b.dataset.addPvfee;
@@ -1541,14 +1619,13 @@ function bindAll(){
     var tagEl=document.getElementById('new-pvfee-tag-'+pvid);
     var pmid=pmEl?pmEl.value:'';var pct=pctEl?parseFloat(pctEl.value)||0:0;var tag=tagEl?tagEl.value.trim():'';
     if(!pmid){alert('Select a payment method.');return;}
-    pv.fees.push({id:uid(),payMethodId:pmid,fee:pct,payTag:tag});saveDB();render();
+    pv.fees.push({id:uid(),payMethodId:pmid,fee:pct,payTag:tag});saveDB();pushConfig();render();
   });});
-  /* VENDORS — game vendors */
   on('add-gv-btn','click',function(){
     var el=document.getElementById('new-gv-name');if(!el||!el.value.trim())return;
-    DB.gameVendors.push({id:uid(),name:el.value.trim(),notes:''});saveDB();render();
+    DB.gameVendors.push({id:uid(),name:el.value.trim(),notes:''});saveDB();pushConfig();render();
   });
-  all('[data-del-gv]',function(b){b.addEventListener('click',function(){if(confirm('Delete this game vendor?')){DB.gameVendors=DB.gameVendors.filter(function(v){return v.id!==b.dataset.delGv;});saveDB();render();}});});
+  all('[data-del-gv]',function(b){b.addEventListener('click',function(){if(confirm('Delete this game vendor?')){DB.gameVendors=DB.gameVendors.filter(function(v){return v.id!==b.dataset.delGv;});saveDB();pushConfig();render();}});});
   /* legacy stubs — no-op if old buttons somehow appear */
   on('add-vendor-btn','click',function(){});
   all('[data-del-vendor]',function(b){b.addEventListener('click',function(){});});
@@ -1566,7 +1643,7 @@ function bindAll(){
   on('save-override-code','click',function(){
     var el=document.getElementById('settings-code');if(!el)return;
     var val=el.value.trim();if(!val){alert('Code cannot be empty.');return;}
-    DB.overrideCode=val;saveDB();
+    DB.overrideCode=val;saveDB();pushConfig();
     var msg=document.getElementById('code-saved-msg');if(msg){msg.textContent='✓ Code saved.';setTimeout(function(){msg.textContent='';},2000);}
   });
   /* SUPABASE */
@@ -1637,21 +1714,21 @@ function bindAll(){
   });
 
   /* MODAL SAVES */
-  on('m-save-shift','click',function(){var n=document.getElementById('ms-name').value.trim();if(!n){alert('Name required');return;}DB.shifts.push({id:uid(),name:n,start:document.getElementById('ms-start').value,end:document.getElementById('ms-end').value});saveDB();S.modal=null;render();});
-  on('m-save-agent','click',function(){var n=document.getElementById('ma-name').value.trim();if(!n){alert('Name required');return;}DB.agents.push({id:uid(),name:n,role:document.getElementById('ma-role').value.trim()||'Agent'});saveDB();S.modal=null;render();});
+  on('m-save-shift','click',function(){var n=document.getElementById('ms-name').value.trim();if(!n){alert('Name required');return;}DB.shifts.push({id:uid(),name:n,start:document.getElementById('ms-start').value,end:document.getElementById('ms-end').value});saveDB();pushConfig();S.modal=null;render();});
+  on('m-save-agent','click',function(){var n=document.getElementById('ma-name').value.trim();if(!n){alert('Name required');return;}DB.agents.push({id:uid(),name:n,role:document.getElementById('ma-role').value.trim()||'Agent'});saveDB();pushConfig();S.modal=null;render();});
   on('m-save-game','click',function(){
     var n=document.getElementById('mg-name').value.trim();if(!n){alert('Game name required');return;}
     DB.games.push({id:uid(),name:n,backendLoaded:parseFloat(document.getElementById('mg-bal').value)||0,gameVendorId:document.getElementById('mg-vendor').value||'',vendorId:'',backendLink:document.getElementById('mg-blink').value||'',playerLink:document.getElementById('mg-plink').value||'',username:document.getElementById('mg-user').value||'',password:document.getElementById('mg-pass').value||'',pricePer1k:parseFloat(document.getElementById('mg-price').value)||10,reloadHistory:[]});
-    saveDB();S.modal=null;render();
+    saveDB();pushConfig();S.modal=null;render();
   });
-  on('m-save-pm','click',function(){var n=document.getElementById('mpm-name').value.trim();if(!n){alert('Name required');return;}DB.payMethods.push({id:uid(),name:n,tags:[]});saveDB();S.modal=null;render();});
-  on('m-save-vendor','click',function(){var n=document.getElementById('mv-name').value.trim();if(!n){alert('Name required');return;}DB.vendors.push({id:uid(),name:n,payMethodId:document.getElementById('mv-pm').value||'',gatewayFee:parseFloat(document.getElementById('mv-comm').value)||0,payTag:document.getElementById('mv-tag').value||''});saveDB();S.modal=null;render();});
+  on('m-save-pm','click',function(){var n=document.getElementById('mpm-name').value.trim();if(!n){alert('Name required');return;}DB.payMethods.push({id:uid(),name:n,tags:[]});saveDB();pushConfig();S.modal=null;render();});
+  on('m-save-vendor','click',function(){var n=document.getElementById('mv-name').value.trim();if(!n){alert('Name required');return;}DB.vendors.push({id:uid(),name:n,payMethodId:document.getElementById('mv-pm').value||'',gatewayFee:parseFloat(document.getElementById('mv-comm').value)||0,payTag:document.getElementById('mv-tag').value||''});saveDB();pushConfig();S.modal=null;render();});
   on('m-save-staff','click',function(){
     var n=document.getElementById('sm-name').value.trim();var role=document.getElementById('sm-role').value;
     if(!n){alert('Name required');return;}if(!role){alert('Role required');return;}
     var perms=[];document.querySelectorAll('#pg-new .perm-item.on').forEach(function(el){perms.push(el.dataset.perm);});
     DB.staff.push({id:uid(),name:n,email:document.getElementById('sm-email').value.trim()||'',role:role,pin:document.getElementById('sm-pin').value||'',perms:perms});
-    saveDB();S.modal=null;render();
+    saveDB();pushConfig();S.modal=null;render();
   });
   on('m-save-staff-edit','click',function(){
     var btn=document.getElementById('m-save-staff-edit');var sid=btn?btn.dataset.sid:null;
@@ -1798,7 +1875,45 @@ function bindAll(){
   });
 }
 
-render();
+// ─── BOOT ─────────────────────────────────────
+(function boot(){
+  var root=document.getElementById('root');
+  root.innerHTML=
+    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:20px;background:var(--bg)">'+
+      '<div style="font-size:28px;font-weight:800;color:var(--accent);font-family:var(--mono);letter-spacing:3px">GAME<span style="color:var(--accent2)">CRM</span></div>'+
+      '<div style="font-size:13px;color:var(--text3)" id="boot-msg">Connecting to Supabase...</div>'+
+      '<div style="width:200px;height:3px;background:var(--border);border-radius:3px;overflow:hidden">'+
+        '<div id="boot-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width .5s"></div>'+
+      '</div>'+
+    '</div>';
+
+  function prog(msg,pct){
+    var m=document.getElementById('boot-msg');if(m)m.textContent=msg;
+    var b=document.getElementById('boot-bar');if(b)b.style.width=pct+'%';
+  }
+
+  var sb=DB.supabase;
+  if(!sb||!sb.enabled||!sb.url||!sb.anonKey){
+    render();
+    return;
+  }
+
+  prog('Connecting to Supabase...',15);
+  sbPull()
+    .then(function(result){
+      if(result.ok){
+        prog('Loaded — starting...',100);
+        setTimeout(function(){render();},250);
+      } else {
+        prog('Supabase unavailable — using local data',100);
+        setTimeout(function(){render();},700);
+      }
+    })
+    .catch(function(){
+      prog('Network error — using local data',100);
+      setTimeout(function(){render();},700);
+    });
+})();
 </script>
 </body>
 </html>
